@@ -37,10 +37,15 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [LoginController::class, 'store'])->name('login.attempt');
 
     // Alur Kuesioner via OTP (Guest)
+    // Rate limit: maks 5 request OTP / IP / menit; maks 20 verifikasi / IP / menit
     Route::get('/kuesioner', [QuestionnaireController::class, 'start'])->name('questionnaire.start');
-    Route::post('/kuesioner/request-otp', [QuestionnaireController::class, 'requestOtp'])->name('questionnaire.otp.request');
+    Route::post('/kuesioner/request-otp', [QuestionnaireController::class, 'requestOtp'])
+        ->middleware('throttle:5,1')
+        ->name('questionnaire.otp.request');
     Route::get('/kuesioner/verifikasi', [QuestionnaireController::class, 'showVerify'])->name('questionnaire.verify.form');
-    Route::post('/kuesioner/verifikasi', [QuestionnaireController::class, 'verify'])->name('questionnaire.verify');
+    Route::post('/kuesioner/verifikasi', [QuestionnaireController::class, 'verify'])
+        ->middleware('throttle:20,1')
+        ->name('questionnaire.verify');
 });
 
 Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');

@@ -30,7 +30,6 @@ class KpiPeriod extends Model
     protected $fillable = [
         'name',
         'year',
-        'semester',
         'start_date',
         'end_date',
         'status',
@@ -40,11 +39,10 @@ class KpiPeriod extends Model
     protected function casts(): array
     {
         return [
-            'year' => 'integer',
-            'semester' => 'integer',
+            'year'       => 'integer',
             'start_date' => 'date',
-            'end_date' => 'date',
-            'settings' => 'array',
+            'end_date'   => 'date',
+            'settings'   => 'array',
         ];
     }
 

@@ -14,7 +14,7 @@
         <div>
             <p class="text-[11px] font-bold tracking-[0.18em] text-gold-deep uppercase mb-1.5">Master Data</p>
             <h1 class="text-2xl font-extrabold text-ink tracking-tight">Periode Penilaian KPI</h1>
-            <p class="text-sm text-ink-muted mt-1">Kelola siklus penilaian semesteran dan jadwal aktif evaluasi.</p>
+            <p class="text-sm text-ink-muted mt-1">Kelola siklus penilaian tahunan dan jadwal aktif evaluasi.</p>
         </div>
         <a href="{{ route('periods.create') }}" class="inline-flex items-center gap-2 bg-navy text-white rounded-xl px-5 py-2.5 text-sm font-semibold hover:bg-navy-deep transition shadow-card">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -28,7 +28,7 @@
                 <thead>
                     <tr class="bg-navy-tint text-left text-[11px] font-bold text-ink-soft uppercase tracking-wider">
                         <th class="px-5 py-3">Nama Periode</th>
-                        <th class="px-4 py-3">Tahun / Semester</th>
+                        <th class="px-4 py-3">Tahun</th>
                         <th class="px-4 py-3">Rentang Jadwal</th>
                         <th class="px-4 py-3 text-center">Status</th>
                         <th class="px-5 py-3 text-right">Aksi</th>
@@ -38,7 +38,7 @@
                     @forelse($periods as $p)
                         <tr class="hover:bg-navy-tint/50 transition">
                             <td class="px-5 py-3.5 font-bold text-ink">{{ $p->name }}</td>
-                            <td class="px-4 py-3.5 num text-ink-soft">Tahun {{ $p->year }} — Semester {{ $p->semester }}</td>
+                            <td class="px-4 py-3.5 num text-ink-soft">{{ $p->year }}</td>
                             <td class="px-4 py-3.5 num text-ink-muted text-xs">
                                 {{ $p->start_date?->format('d M Y') }} s/d {{ $p->end_date?->format('d M Y') }}
                             </td>

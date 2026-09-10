@@ -21,8 +21,10 @@ final class OtpMail extends Mailable
 
     public function envelope(): Envelope
     {
+        // Jangan taruh OTP di subject — subject terekspos di email header,
+        // log server, dan notifikasi push yang bisa dibaca tanpa buka email.
         return new Envelope(
-            subject: 'Kode OTP Pengisian Kuesioner KPI 360 — '.$this->otp,
+            subject: 'Kode Verifikasi Pengisian Kuesioner KPI 360',
         );
     }
 

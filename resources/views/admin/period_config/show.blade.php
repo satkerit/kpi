@@ -10,7 +10,7 @@
         </a>
         <p class="text-[11px] font-bold tracking-[0.18em] text-gold-deep uppercase mb-1.5">Konfigurasi Periode</p>
         <h1 class="text-2xl font-extrabold text-ink tracking-tight">{{ $period->name }}</h1>
-        <p class="text-sm text-ink-muted mt-1">Tahun {{ $period->year }} &mdash; Semester {{ $period->semester }} &middot; Konfigurasi bobot evaluator, skala penilaian, dan pengaturan 360.</p>
+        <p class="text-sm text-ink-muted mt-1">Tahun {{ $period->year }} &middot; Konfigurasi bobot evaluator, skala penilaian, dan pengaturan 360.</p>
     </div>
 
     @if(session('success'))

@@ -114,12 +114,6 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
                 Divisi
             </a>
-            <a href="{{ route('admin.departments.index') }}"
-               class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
-                      {{ request()->routeIs('admin.departments.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5h16v4H4V5Zm0 12h16v4H4v-4Zm0-6h8v4H4v-4Zm12 0h4v4h-4v-4Z"/></svg>
-                Bagian
-            </a>
             <a href="{{ route('admin.positions.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('admin.positions.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">

@@ -218,7 +218,7 @@ final class QuestionnaireController extends Controller
 
         $assignments = $me->assignmentsAsEvaluator()
             ->where('period_id', $period->id)
-            ->with(['evaluatee.position', 'evaluatee.office', 'evaluatee.department', 'scores'])
+            ->with(['evaluatee.position', 'evaluatee.office', 'scores'])
             ->get();
 
         $sections = [];

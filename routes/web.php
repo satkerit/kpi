@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\EmployeeAdminController;
 use App\Http\Controllers\Admin\EvaluationRuleController;
@@ -139,7 +138,6 @@ Route::middleware('auth')->group(function () {
 
         Route::resource('offices', OfficeController::class)->except(['show']);
         Route::resource('divisions', DivisionController::class)->except(['show']);
-        Route::resource('departments', DepartmentController::class)->except(['show']);
         Route::resource('positions', PositionController::class)->except(['show']);
 
         Route::resource('users', UserAccountController::class)

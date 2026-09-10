@@ -100,12 +100,11 @@ final class QuestionnaireAssignmentService
 
     private function inSameScope(Employee $me, Employee $other): bool
     {
-        return ($me->office_id && $me->office_id === $other->office_id)
-            || ($me->department_id && $me->department_id === $other->department_id);
+        return (bool) ($me->office_id && $me->office_id === $other->office_id);
     }
 
     /**
-     * Query pegawai yang masih 1 kantor atau 1 bagian dengan pegawai pembanding.
+     * Query pegawai yang masih 1 kantor dengan pegawai pembanding.
      */
     private function sameScope(Employee $me): Builder
     {
@@ -113,10 +112,6 @@ final class QuestionnaireAssignmentService
             $w->where(function ($q) use ($me) {
                 $me->office_id
                     ? $q->where('office_id', $me->office_id)
-                    : $q->whereRaw('1 = 0');
-            })->orWhere(function ($q) use ($me) {
-                $me->department_id
-                    ? $q->where('department_id', $me->department_id)
                     : $q->whereRaw('1 = 0');
             });
         });

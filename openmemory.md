@@ -40,10 +40,10 @@ Framework: Laravel 11+, PHP 8.4, MySQL prod / SQLite :memory: test.
 
 ### HumanResource Domain
 
-- `Employee`: standalone, fillable HR fields, relasi user/office/division/department/position/supervisor.
+- `Employee`: standalone, fillable HR fields (`name`, `email`, `nik`, `phone`, `office_id`, `division_id`, `department_id`, `position_id`, `direct_supervisor_id`, `manager_id`, `is_active`), relasi user/office/division/department/position/supervisor/manager.
 - `Office`: type enum `head_office|branch|kpo|kas`, `branch_code` wajib bila kas.
-- `Division`, `Department`: `head_id` FK ke `employees`.
-- `Position`: `level` integer untuk hierarchi.
+- `Division`, `Department`: `parent_id` FK self-referencing hierarchy, `category` (`operasional`, `bisnis`).
+- `Position`: `level` integer untuk hierarki.
 
 ### MasterKpi Domain
 

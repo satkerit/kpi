@@ -28,7 +28,7 @@
     <div id="importModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
             <h3 class="text-lg font-extrabold text-ink mb-2">Upload Data Pegawai (CSV)</h3>
-            <p class="text-xs text-ink-muted mb-4">Pastikan format sesuai dengan template CSV yang disediakan. Kolom <strong>nik, name, email, office_code, position_code, dan is_active</strong> wajib diisi.</p>
+            <p class="text-xs text-ink-muted mb-4">Pastikan format sesuai dengan template CSV yang disediakan. Kolom <strong>nik, name, email, office_code, position_code, dan is_active</strong> wajib diisi. Kolom <strong>direct_supervisor_nik</strong> (NIK atasan langsung) dan <strong>manager_nik</strong> (NIK manajer) bersifat opsional.</p>
             <form action="{{ route('admin.import.store', 'employees') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
                 <div>
@@ -44,7 +44,7 @@
 
     {{-- Filter Form --}}
     <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-4 mb-6">
-        <form method="GET" action="{{ route('admin.employees.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <form method="GET" action="{{ route('admin.employees.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
                 <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-1.5">Cari</label>
                 <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Nama, NIK, Email"
@@ -68,15 +68,6 @@
                     @endforeach
                 </select>
             </div>
-            <div>
-                <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-1.5">Bagian</label>
-                <select name="department_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
-                    <option value="">Semua Bagian</option>
-                    @foreach($departments as $department)
-                        <option value="{{ $department->id }}" {{ ($filters['department_id'] ?? '') == $department->id ? 'selected' : '' }}>{{ $department->name }}</option>
-                    @endforeach
-                </select>
-            </div>
             <div class="flex items-end">
                 <button type="submit" class="w-full px-4 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:bg-navy-deep transition">
                     Filter
@@ -94,9 +85,9 @@
                         <th class="px-4 py-3">Email</th>
                         <th class="px-4 py-3">Kantor</th>
                         <th class="px-4 py-3">Divisi</th>
-                        <th class="px-4 py-3">Bagian</th>
                         <th class="px-4 py-3">Jabatan</th>
                         <th class="px-4 py-3">Atasan</th>
+                        <th class="px-4 py-3">Manajer</th>
                         <th class="px-4 py-3 text-center">Akun</th>
                         <th class="px-5 py-3 text-right">Aksi</th>
                     </tr>
@@ -111,7 +102,6 @@
                             <td class="px-4 py-3.5 text-ink-soft text-xs">{{ $employee->email }}</td>
                             <td class="px-4 py-3.5 text-ink-soft text-xs">{{ $employee->office?->name ?? '—' }}</td>
                             <td class="px-4 py-3.5 text-ink-soft text-xs">{{ $employee->division?->name ?? '—' }}</td>
-                            <td class="px-4 py-3.5 text-ink-soft text-xs">{{ $employee->department?->name ?? '—' }}</td>
                             <td class="px-4 py-3.5 text-ink-soft text-xs">
                                 @if($employee->position)
                                     <span class="inline-flex items-center gap-1">
@@ -123,6 +113,7 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3.5 text-ink-soft text-xs">{{ $employee->supervisor?->name ?? '—' }}</td>
+                            <td class="px-4 py-3.5 text-ink-soft text-xs">{{ $employee->manager?->name ?? '—' }}</td>
                             <td class="px-4 py-3.5 text-center">
                                 @if($employee->user)
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20">

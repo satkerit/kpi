@@ -20,7 +20,7 @@ final class RuleBasedAssignmentService
     {
         $rules = EvaluationRule::query()
             ->where('is_active', true)
-            ->with(['evaluatorPosition', 'evaluateePosition', 'scopeOffice', 'scopeDivision', 'scopeDepartment'])
+            ->with(['evaluatorPosition', 'evaluateePosition', 'scopeOffice', 'scopeDivision'])
             ->get();
 
         $created = 0;
@@ -47,7 +47,6 @@ final class RuleBasedAssignmentService
             positionId: $rule->evaluator_position_id,
             officeId: $rule->scope_office_id,
             divisionId: $rule->scope_division_id,
-            departmentId: $rule->scope_department_id,
         );
 
         if ($evaluators->isEmpty()) {
@@ -86,7 +85,6 @@ final class RuleBasedAssignmentService
                 positionId: $rule->evaluatee_position_id,
                 officeId: $rule->scope_office_id,
                 divisionId: $rule->scope_division_id,
-                departmentId: $rule->scope_department_id,
             );
         }
 
@@ -105,7 +103,6 @@ final class RuleBasedAssignmentService
             })
             ->when($rule->scope_office_id, fn ($q) => $q->where('office_id', $rule->scope_office_id))
             ->when($rule->scope_division_id, fn ($q) => $q->where('division_id', $rule->scope_division_id))
-            ->when($rule->scope_department_id, fn ($q) => $q->where('department_id', $rule->scope_department_id))
             ->get();
     }
 
@@ -118,14 +115,12 @@ final class RuleBasedAssignmentService
         int $positionId,
         ?int $officeId,
         ?int $divisionId,
-        ?int $departmentId,
     ): Collection {
         return Employee::query()
             ->with('position')
             ->where('position_id', $positionId)
             ->when($officeId, fn ($q) => $q->where('office_id', $officeId))
             ->when($divisionId, fn ($q) => $q->where('division_id', $divisionId))
-            ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
             ->get();
     }
 

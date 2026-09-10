@@ -75,7 +75,7 @@
             <div>
                 <p class="text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Lingkup Scope</p>
                 <p class="text-[11px] text-ink-muted mb-3">Kosongkan semua untuk berlaku di seluruh kantor (lintas kantor). Isi untuk membatasi.</p>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-ink-soft mb-1.5">Kantor</label>
                         <select name="scope_office_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
@@ -91,15 +91,6 @@
                             <option value="">— Semua Divisi —</option>
                             @foreach($divisions as $division)
                                 <option value="{{ $division->id }}" @selected((int) old('scope_division_id', $record->scope_division_id) === $division->id)>{{ $division->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-ink-soft mb-1.5">Bagian</label>
-                        <select name="scope_department_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
-                            <option value="">— Semua Bagian —</option>
-                            @foreach($departments as $department)
-                                <option value="{{ $department->id }}" @selected((int) old('scope_department_id', $record->scope_department_id) === $department->id)>{{ $department->name }}</option>
                             @endforeach
                         </select>
                     </div>

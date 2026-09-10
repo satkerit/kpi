@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * Base controller CRUD untuk master data HR (Office, Division, Position, Department).
+ * Base controller CRUD untuk master data HR (Office, Division, Position).
  * Subclass hanya perlu meng-override konfigurasi & rules().
  */
 abstract class MasterDataController extends Controller

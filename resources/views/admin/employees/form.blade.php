@@ -73,7 +73,8 @@
                     <select name="office_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
                         <option value="">-- Pilih Kantor --</option>
                         @foreach($offices as $office)
-                            <option value="{{ $office->id }}" {{ old('office_id', $employee->office_id) == $office->id ? 'selected' : '' }}>
+                            <option value="{{ $office->id }}" data-code="{{ $office->code }}" data-type="{{ $office->type }}" data-branch-code="{{ $office->branch_code }}"
+                                {{ old('office_id', $employee->office_id) == $office->id ? 'selected' : '' }}>
                                 {{ $office->name }}
                             </option>
                         @endforeach
@@ -92,20 +93,8 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Bagian</label>
-                    <select name="department_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
-                        <option value="">-- Pilih Bagian --</option>
-                        @foreach($departments as $department)
-                            <option value="{{ $department->id }}" {{ old('department_id', $employee->department_id) == $department->id ? 'selected' : '' }}>
-                                {{ $department->parent_id ? '↳ ' : '' }}{{ $department->name }}@if($department->category) ({{ ucfirst($department->category) }})@endif
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Jabatan</label>
+            <div>
+                <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Jabatan</label>
                     <select name="position_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
                         <option value="">-- Pilih Jabatan --</option>
                         @foreach($positions as $position)
@@ -124,14 +113,35 @@
                     @foreach($supervisors as $sup)
                         <option value="{{ $sup->id }}"
                             data-office="{{ $sup->office_id }}"
+                            data-office-code="{{ $sup->office?->code }}"
+                            data-office-type="{{ $sup->office?->type }}"
+                            data-office-branch-code="{{ $sup->office?->branch_code }}"
                             data-division="{{ $sup->division_id }}"
-                            data-department="{{ $sup->department_id }}"
                             {{ old('direct_supervisor_id', $employee->direct_supervisor_id) == $sup->id ? 'selected' : '' }}>
                             {{ $sup->name }} ({{ $sup->nik }})
                         </option>
                     @endforeach
                 </select>
-                <p class="text-xs text-ink-muted mt-1">Hanya menampilkan pegawai di kantor/divisi/bagian yang sama. Pilih kantor/divisi/bagian terlebih dahulu.</p>
+                <p class="text-xs text-ink-muted mt-1">Hanya menampilkan pegawai di kantor/divisi yang sama. Untuk Kantor Kas, pilihan mencakup pegawai cabang induknya.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Manajer</label>
+                <select name="manager_id" id="manager_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
+                    <option value="">-- Pilih Manajer --</option>
+                    @foreach($managers as $mgr)
+                        <option value="{{ $mgr->id }}"
+                            data-office="{{ $mgr->office_id }}"
+                            data-office-code="{{ $mgr->office?->code }}"
+                            data-office-type="{{ $mgr->office?->type }}"
+                            data-office-branch-code="{{ $mgr->office?->branch_code }}"
+                            data-division="{{ $mgr->division_id }}"
+                            {{ old('manager_id', $employee->manager_id) == $mgr->id ? 'selected' : '' }}>
+                            {{ $mgr->name }} ({{ $mgr->nik }})
+                        </option>
+                    @endforeach
+                </select>
+                <p class="text-xs text-ink-muted mt-1">Manajer struktural di atas atasan langsung. Saringan kantor sama seperti pilihan atasan.</p>
             </div>
 
             <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
@@ -148,54 +158,68 @@
 
 <script>
 (function () {
-    const officeSelect     = document.querySelector('select[name="office_id"]');
-    const divisionSelect   = document.querySelector('select[name="division_id"]');
-    const departmentSelect = document.querySelector('select[name="department_id"]');
-    const supervisorSelect = document.getElementById('direct_supervisor_id');
+    const officeSelect   = document.querySelector('select[name="office_id"]');
+    const divisionSelect = document.querySelector('select[name="division_id"]');
 
-    // Simpan semua opsi asli kecuali placeholder
-    const allOptions = Array.from(supervisorSelect.querySelectorAll('option:not([value=""])'));
+    // Semua dropdown pegawai yang di-filter: atasan langsung + manajer
+    const peopleSelects = [
+        document.getElementById('direct_supervisor_id'),
+        document.getElementById('manager_id'),
+    ].filter(Boolean);
 
-    function filterSupervisors() {
-        const officeId     = officeSelect.value;
-        const divisionId   = divisionSelect.value;
-        const departmentId = departmentSelect.value;
+    const optionSets = new Map(peopleSelects.map(sel => [
+        sel,
+        Array.from(sel.querySelectorAll('option:not([value=""])')),
+    ]));
 
-        // Tidak ada filter dipilih — tampilkan semua
-        if (! officeId && ! divisionId && ! departmentId) {
-            allOptions.forEach(opt => supervisorSelect.appendChild(opt));
-            return;
-        }
+    function filterPeople() {
+        const officeId   = officeSelect.value;
+        const divisionId = divisionSelect.value;
 
-        const currentVal = supervisorSelect.value;
+        // Meta kantor terpilih — untuk Kas, sertakan pegawai cabang induknya
+        const selectedOfficeOpt = officeSelect.selectedOptions[0];
+        const selType = selectedOfficeOpt?.dataset.type ?? '';
+        const selBranchCode = (selectedOfficeOpt?.dataset.branchCode ?? '').toUpperCase();
 
-        // Hapus semua opsi non-placeholder
-        allOptions.forEach(opt => opt.remove());
+        optionSets.forEach((allOptions, peopleSelect) => {
+            // Tidak ada filter dipilih — tampilkan semua
+            if (! officeId && ! divisionId) {
+                allOptions.forEach(opt => peopleSelect.appendChild(opt));
+                return;
+            }
 
-        // Tambahkan kembali yang cocok minimal satu kriteria yang dipilih
-        allOptions.forEach(opt => {
-            const matchOffice     = ! officeId     || opt.dataset.office     === officeId;
-            const matchDivision   = ! divisionId   || opt.dataset.division   === divisionId;
-            const matchDepartment = ! departmentId || opt.dataset.department === departmentId;
+            const currentVal = peopleSelect.value;
+            allOptions.forEach(opt => opt.remove());
 
-            if (matchOffice && matchDivision && matchDepartment) {
-                supervisorSelect.appendChild(opt);
+            allOptions.forEach(opt => {
+                let matchOffice = true;
+                if (officeId) {
+                    const sameOffice = opt.dataset.office === officeId;
+                    // Kasus Kas: boleh dari cabang induk (kode kantor atasan == branch_code Kas terpilih)
+                    const parentBranch = selType === 'kas' && selBranchCode !== ''
+                        && (opt.dataset.officeCode ?? '').toUpperCase() === selBranchCode;
+                    matchOffice = sameOffice || parentBranch;
+                }
+                const matchDivision = ! divisionId || opt.dataset.division === divisionId;
+
+                if (matchOffice && matchDivision) {
+                    peopleSelect.appendChild(opt);
+                }
+            });
+
+            // Pertahankan nilai sebelumnya jika masih ada di daftar
+            peopleSelect.value = currentVal;
+            if (peopleSelect.value !== currentVal) {
+                peopleSelect.value = '';
             }
         });
-
-        // Pertahankan nilai sebelumnya jika masih ada di daftar
-        supervisorSelect.value = currentVal;
-        if (supervisorSelect.value !== currentVal) {
-            supervisorSelect.value = '';
-        }
     }
 
-    officeSelect.addEventListener('change', filterSupervisors);
-    divisionSelect.addEventListener('change', filterSupervisors);
-    departmentSelect.addEventListener('change', filterSupervisors);
+    officeSelect.addEventListener('change', filterPeople);
+    divisionSelect.addEventListener('change', filterPeople);
 
     // Jalankan saat load agar sesuai dengan nilai awal (edit mode)
-    filterSupervisors();
+    filterPeople();
 }());
 </script>
 @endsection

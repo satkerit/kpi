@@ -33,11 +33,6 @@ class Division extends Model
         return $this->hasMany(Employee::class, 'division_id');
     }
 
-    public function departments(): HasMany
-    {
-        return $this->hasMany(Department::class, 'division_id');
-    }
-
     public function head(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'head_id');

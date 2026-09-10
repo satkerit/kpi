@@ -38,10 +38,6 @@ class RbacSeeder extends Seeder
             'divisions.view' => 'Lihat Divisi',
             'divisions.manage' => 'Kelola Divisi',
         ],
-        'departments' => [
-            'departments.view' => 'Lihat Bagian',
-            'departments.manage' => 'Kelola Bagian',
-        ],
         'positions' => [
             'positions.view' => 'Lihat Jabatan',
             'positions.manage' => 'Kelola Jabatan',
@@ -90,12 +86,18 @@ class RbacSeeder extends Seeder
         );
         $adminHr->syncPermissions([
             'dashboard.view',
-            'employees.view', 'employees.create', 'employees.edit', 'employees.delete',
-            'offices.view', 'offices.manage',
-            'divisions.view', 'divisions.manage',
-            'departments.view', 'departments.manage',
-            'positions.view', 'positions.manage',
-            'kpi.view', 'kpi.manage',
+            'employees.view',
+            'employees.create',
+            'employees.edit',
+            'employees.delete',
+            'offices.view',
+            'offices.manage',
+            'divisions.view',
+            'divisions.manage',
+            'positions.view',
+            'positions.manage',
+            'kpi.view',
+            'kpi.manage',
         ]);
 
         // Role Evaluator — hanya mengisi evaluasi

@@ -6,7 +6,7 @@
         <div>
             <p class="text-[11px] font-bold tracking-[0.18em] text-gold-deep uppercase mb-1.5">Manajemen Admin</p>
             <h1 class="text-2xl font-extrabold text-ink tracking-tight">Setup Penilaian</h1>
-            <p class="text-sm text-ink-muted mt-1">Atur siapa menilai siapa berdasarkan jabatan, kantor, divisi, dan bagian. Kosongkan scope = berlaku untuk semua.</p>
+            <p class="text-sm text-ink-muted mt-1">Atur siapa menilai siapa berdasarkan jabatan, kantor, dan divisi. Kosongkan scope = berlaku untuk semua.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             <button onclick="document.getElementById('generateModal').classList.remove('hidden')" class="inline-flex items-center gap-2 bg-emerald-600 text-white rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-emerald-700 transition shadow-card">
@@ -70,7 +70,6 @@
                             $scope = collect([
                                 $rule->scopeOffice?->code,
                                 $rule->scopeDivision?->code,
-                                $rule->scopeDepartment?->code,
                             ])->filter()->implode(' / ');
                             $typeClass = $rule->evaluator_type === 'P1'
                                 ? 'bg-blue-50 text-blue-700 ring-blue-600/20'

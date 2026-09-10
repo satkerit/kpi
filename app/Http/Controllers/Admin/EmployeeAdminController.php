@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Domains\HumanResource\Models\Department;
 use App\Domains\HumanResource\Models\Division;
 use App\Domains\HumanResource\Models\Employee;
 use App\Domains\HumanResource\Models\Office;
@@ -20,17 +19,18 @@ final class EmployeeAdminController extends Controller
     public function index(Request $request): View
     {
         $employees = Employee::query()
-            ->with(['office:id,name', 'division:id,name', 'department:id,name', 'position:id,name,level', 'supervisor:id,name', 'user:id'])
-            ->when($request->filled('search'), fn ($q) => $q->where(function ($q) use ($request) {
-                $search = $request->string('search');
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('nik', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            }))
+            ->with(['office:id,name', 'division:id,name', 'position:id,name,level', 'supervisor:id,name', 'manager:id,name', 'user:id'])
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $term = '%'.$request->input('search').'%';
+                $q->where(function ($sub) use ($term) {
+                    $sub->where('name', 'like', $term)
+                        ->orWhere('nik', 'like', $term)
+                        ->orWhere('email', 'like', $term);
+                });
+            })
             ->when($request->filled('office_id'), fn ($q) => $q->where('office_id', $request->integer('office_id')))
             ->when($request->filled('division_id'), fn ($q) => $q->where('division_id', $request->integer('division_id')))
-            ->when($request->filled('department_id'), fn ($q) => $q->where('department_id', $request->integer('department_id')))
-            ->orderBy('name')
+            ->latest()
             ->paginate(15)
             ->withQueryString();
 
@@ -38,8 +38,7 @@ final class EmployeeAdminController extends Controller
             'employees' => $employees,
             'offices' => Office::orderBy('name')->get(['id', 'name']),
             'divisions' => Division::orderBy('name')->get(['id', 'name']),
-            'departments' => Department::orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only(['search', 'office_id', 'division_id', 'department_id']),
+            'filters' => $request->only(['search', 'office_id', 'division_id']),
         ]);
     }
 
@@ -62,9 +61,9 @@ final class EmployeeAdminController extends Controller
             'phone' => $data['phone'] ?? null,
             'office_id' => $data['office_id'] ?? null,
             'division_id' => $data['division_id'] ?? null,
-            'department_id' => $data['department_id'] ?? null,
             'position_id' => $data['position_id'] ?? null,
             'direct_supervisor_id' => $data['direct_supervisor_id'] ?? null,
+            'manager_id' => $data['manager_id'] ?? null,
             'is_active' => true,
         ]);
 
@@ -91,9 +90,9 @@ final class EmployeeAdminController extends Controller
             'phone' => $data['phone'] ?? null,
             'office_id' => $data['office_id'] ?? null,
             'division_id' => $data['division_id'] ?? null,
-            'department_id' => $data['department_id'] ?? null,
             'position_id' => $data['position_id'] ?? null,
             'direct_supervisor_id' => $data['direct_supervisor_id'] ?? null,
+            'manager_id' => $data['manager_id'] ?? null,
         ]);
 
         return redirect()->route('admin.employees.index')
@@ -127,9 +126,9 @@ final class EmployeeAdminController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
             'office_id' => ['nullable', 'integer', 'exists:offices,id'],
             'division_id' => ['nullable', 'integer', 'exists:divisions,id'],
-            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'position_id' => ['nullable', 'integer', 'exists:positions,id'],
             'direct_supervisor_id' => ['nullable', 'integer', 'exists:employees,id'],
+            'manager_id' => ['nullable', 'integer', 'different:direct_supervisor_id', 'exists:employees,id'],
         ];
     }
 
@@ -139,14 +138,17 @@ final class EmployeeAdminController extends Controller
     private function masterOptions(Employee $employee): array
     {
         return [
-            'offices' => Office::orderBy('name')->get(['id', 'name']),
+            'offices' => Office::orderBy('name')->get(['id', 'name', 'code', 'type', 'branch_code']),
             'divisions' => Division::orderByRaw('COALESCE(parent_id, id)')->orderBy('parent_id')->orderBy('name')->get(['id', 'name', 'parent_id']),
-            'departments' => Department::orderByRaw('COALESCE(parent_id, id)')->orderBy('parent_id')->orderBy('name')->get(['id', 'name', 'parent_id', 'category']),
             'positions' => Position::orderBy('level')->orderBy('name')->get(['id', 'name', 'level']),
-            'supervisors' => Employee::when(
+            'supervisors' => Employee::with('office:id,code,type,branch_code')->when(
                 $employee->exists,
                 fn ($q) => $q->whereKeyNot($employee->id),
-            )->orderBy('name')->get(['id', 'name', 'nik', 'office_id', 'division_id', 'department_id']),
+            )->orderBy('name')->get(['id', 'name', 'nik', 'office_id', 'division_id']),
+            'managers' => Employee::with('office:id,code,type,branch_code')->when(
+                $employee->exists,
+                fn ($q) => $q->whereKeyNot($employee->id),
+            )->orderBy('name')->get(['id', 'name', 'nik', 'office_id', 'division_id']),
         ];
     }
 }

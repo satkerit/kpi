@@ -26,9 +26,9 @@ class Employee extends Model
         'phone',
         'office_id',
         'division_id',
-        'department_id',
         'position_id',
         'direct_supervisor_id',
+        'manager_id',
         'is_active',
     ];
 
@@ -55,11 +55,6 @@ class Employee extends Model
         return $this->belongsTo(Division::class, 'division_id');
     }
 
-    public function department(): BelongsTo
-    {
-        return $this->belongsTo(Department::class, 'department_id');
-    }
-
     public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class, 'position_id');
@@ -68,6 +63,12 @@ class Employee extends Model
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'direct_supervisor_id');
+    }
+
+    /** Manajer struktural (di atas atasan langsung). */
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'manager_id');
     }
 
     public function subordinates(): HasMany

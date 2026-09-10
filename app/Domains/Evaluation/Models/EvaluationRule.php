@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Evaluation\Models;
 
-use App\Domains\HumanResource\Models\Department;
 use App\Domains\HumanResource\Models\Division;
 use App\Domains\HumanResource\Models\Office;
 use App\Domains\HumanResource\Models\Position;
@@ -22,7 +21,6 @@ class EvaluationRule extends Model
         'evaluatee_position_id',
         'scope_office_id',
         'scope_division_id',
-        'scope_department_id',
         'is_active',
     ];
 
@@ -51,10 +49,5 @@ class EvaluationRule extends Model
     public function scopeDivision(): BelongsTo
     {
         return $this->belongsTo(Division::class, 'scope_division_id');
-    }
-
-    public function scopeDepartment(): BelongsTo
-    {
-        return $this->belongsTo(Department::class, 'scope_department_id');
     }
 }

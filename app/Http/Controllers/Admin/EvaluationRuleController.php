@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domains\Evaluation\Models\EvaluationRule;
 use App\Domains\Evaluation\Services\RuleBasedAssignmentService;
-use App\Domains\HumanResource\Models\Department;
 use App\Domains\HumanResource\Models\Division;
 use App\Domains\HumanResource\Models\Office;
 use App\Domains\HumanResource\Models\Position;
@@ -21,7 +20,7 @@ final class EvaluationRuleController extends Controller
     public function index(): View
     {
         $records = EvaluationRule::query()
-            ->with(['evaluatorPosition', 'evaluateePosition', 'scopeOffice', 'scopeDivision', 'scopeDepartment'])
+            ->with(['evaluatorPosition', 'evaluateePosition', 'scopeOffice', 'scopeDivision'])
             ->orderBy('evaluator_type')
             ->orderBy('id')
             ->paginate(20);
@@ -97,7 +96,6 @@ final class EvaluationRuleController extends Controller
             'evaluatee_position_id' => ['nullable', 'integer', 'exists:positions,id'],
             'scope_office_id' => ['nullable', 'integer', 'exists:offices,id'],
             'scope_division_id' => ['nullable', 'integer', 'exists:divisions,id'],
-            'scope_department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'is_active' => ['boolean'],
         ];
     }
@@ -112,7 +110,6 @@ final class EvaluationRuleController extends Controller
             'positions' => Position::query()->where('is_active', true)->orderBy('level')->orderBy('name')->get(),
             'offices' => Office::query()->where('is_active', true)->orderBy('name')->get(),
             'divisions' => Division::query()->where('is_active', true)->orderBy('name')->get(),
-            'departments' => Department::query()->where('is_active', true)->orderBy('name')->get(),
         ];
     }
 }

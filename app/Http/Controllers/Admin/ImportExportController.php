@@ -10,10 +10,8 @@ use App\Domains\HumanResource\Models\Employee;
 use App\Domains\HumanResource\Models\Office;
 use App\Domains\HumanResource\Models\Position;
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ImportExportController extends Controller
@@ -25,19 +23,19 @@ final class ImportExportController extends Controller
     {
         $headers = match ($type) {
             'offices' => ['name', 'code', 'type', 'branch_code', 'address', 'phone', 'is_active'],
-            'divisions' => ['name', 'code', 'is_active'],
-            'departments' => ['name', 'code', 'division_code', 'office_code', 'description', 'is_active'],
+            'divisions' => ['name', 'code', 'parent_code', 'is_active'],
+            'departments' => ['name', 'code', 'division_code', 'office_code', 'parent_code', 'category', 'description', 'is_active'],
             'positions' => ['name', 'level', 'is_active'],
-            'employees' => ['nik', 'name', 'email', 'password', 'office_code', 'division_code', 'department_code', 'position_code', 'phone'],
+            'employees' => ['nik', 'name', 'email', 'office_code', 'division_code', 'department_code', 'position_code', 'phone', 'is_active'],
             default => abort(404),
         };
 
         $sample = match ($type) {
             'offices' => ['Kantor Kas Rungkut', 'KAS-RGT', 'kas', 'SBY', 'Jl. Rungkut No.1 Surabaya', '031-8760001', '1'],
-            'divisions' => ['Teknologi Informasi', 'DTI', '1'],
-            'departments' => ['Pengembangan Perangkat Lunak', 'PPL', 'DTI', 'PUSAT', 'Bagian dev software', '1'],
+            'divisions' => ['Teknologi Informasi', 'DTI', '', '1'],
+            'departments' => ['Pengembangan Perangkat Lunak', 'PPL', 'DTI', 'PUSAT', '', 'operasional', 'Bagian dev software', '1'],
             'positions' => ['Manager', '5', '1'],
-            'employees' => ['199001012025011001', 'Budi Santoso', 'budi@kpi360.co.id', 'password123', 'PUSAT', 'DTI', 'PPL', 'Manager', '081234567890'],
+            'employees' => ['199001012025011001', 'Budi Santoso', 'budi@kpi360.co.id', 'PUSAT', 'DTI', 'PPL', 'Manager', '081234567890', '1'],
             default => [],
         };
 
@@ -137,10 +135,13 @@ final class ImportExportController extends Controller
 
     private function importDivision(array $data): void
     {
+        $parent = Division::where('code', trim($data['parent_code'] ?? ''))->first();
+
         Division::updateOrCreate(
             ['code' => trim($data['code'])],
             [
                 'name' => trim($data['name']),
+                'parent_id' => $parent?->id,
                 'is_active' => filter_var($data['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
             ]
         );
@@ -150,6 +151,7 @@ final class ImportExportController extends Controller
     {
         $division = Division::where('code', trim($data['division_code'] ?? ''))->first();
         $office = Office::where('code', trim($data['office_code'] ?? ''))->first();
+        $parent = Department::where('code', trim($data['parent_code'] ?? ''))->first();
 
         Department::updateOrCreate(
             ['code' => trim($data['code'])],
@@ -157,6 +159,8 @@ final class ImportExportController extends Controller
                 'name' => trim($data['name']),
                 'division_id' => $division?->id,
                 'office_id' => $office?->id,
+                'parent_id' => $parent?->id,
+                'category' => trim($data['category'] ?? '') !== '' ? trim($data['category']) : null,
                 'description' => trim($data['description'] ?? ''),
                 'is_active' => filter_var($data['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
             ]
@@ -176,38 +180,48 @@ final class ImportExportController extends Controller
 
     private function importEmployee(array $data): void
     {
-        $office = Office::where('code', trim($data['office_code'] ?? ''))->first();
-        $division = Division::where('code', trim($data['division_code'] ?? ''))->first();
-        $department = Department::where('code', trim($data['department_code'] ?? ''))->first();
-        $position = Position::where('name', trim($data['position_code'] ?? ''))->first();
-
+        $nik = trim($data['nik'] ?? '');
+        $name = trim($data['name'] ?? '');
         $email = trim($data['email'] ?? '');
-        $password = trim($data['password'] ?? '');
+        $officeCode = trim($data['office_code'] ?? '');
+        $positionCode = trim($data['position_code'] ?? '');
+        $isActiveRaw = $data['is_active'] ?? null;
 
-        // Cari atau buat akun user jika email tersedia
-        $userId = null;
-        if ($email !== '') {
-            $user = User::firstOrCreate(
-                ['email' => $email],
-                [
-                    'name' => trim($data['name']),
-                    'password' => Hash::make($password !== '' ? $password : 'password123'),
-                ]
-            );
-            $userId = $user->id;
+        if ($nik === '' || $name === '' || $email === '' || $officeCode === '' || $positionCode === '' || $isActiveRaw === null || $isActiveRaw === '') {
+            throw new \InvalidArgumentException('Kolom nik, name, email, office_code, position_code, dan is_active wajib diisi.');
         }
 
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new \InvalidArgumentException("Format email [{$email}] tidak valid.");
+        }
+
+        $office = Office::where('code', strtoupper($officeCode))->orWhere('code', $officeCode)->first();
+        if (! $office) {
+            throw new \InvalidArgumentException("Kantor dengan kode [{$officeCode}] tidak ditemukan.");
+        }
+
+        $position = Position::where('name', $positionCode)->orWhere('id', $positionCode)->first();
+        if (! $position) {
+            throw new \InvalidArgumentException("Jabatan [{$positionCode}] tidak ditemukan.");
+        }
+
+        $division = Division::where('code', trim($data['division_code'] ?? ''))->first();
+        $department = Department::where('code', trim($data['department_code'] ?? ''))->first();
+
+        $existing = Employee::where('nik', $nik)->first();
+
         Employee::updateOrCreate(
-            ['nik' => trim($data['nik'])],
+            ['nik' => $nik],
             [
-                'user_id' => $userId,
-                'name' => trim($data['name']),
-                'email' => $email !== '' ? $email : null,
-                'office_id' => $office?->id,
+                'user_id' => $existing?->user_id,
+                'name' => $name,
+                'email' => $email,
+                'office_id' => $office->id,
                 'division_id' => $division?->id,
                 'department_id' => $department?->id,
-                'position_id' => $position?->id,
+                'position_id' => $position->id,
                 'phone' => trim($data['phone'] ?? ''),
+                'is_active' => filter_var($isActiveRaw, FILTER_VALIDATE_BOOLEAN),
             ]
         );
     }

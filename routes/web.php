@@ -76,6 +76,7 @@ Route::get('/', function () {
 
 Route::middleware('kpi.employee')->group(function () {
     Route::get('/kuesioner/form', [QuestionnaireController::class, 'form'])->name('questionnaire.form');
+    Route::post('/kuesioner/submit-all', [QuestionnaireController::class, 'submitAll'])->name('questionnaire.submitAll');
 
     Route::prefix('evaluations')->name('evaluations.')->group(function () {
         Route::get('/{assignment}/form', [EvaluationFormController::class, 'show'])

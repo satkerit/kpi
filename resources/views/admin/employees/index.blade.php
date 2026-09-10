@@ -28,7 +28,7 @@
     <div id="importModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
             <h3 class="text-lg font-extrabold text-ink mb-2">Upload Data Pegawai (CSV)</h3>
-            <p class="text-xs text-ink-muted mb-4">Pastikan format sesuai dengan template CSV yang disediakan.</p>
+            <p class="text-xs text-ink-muted mb-4">Pastikan format sesuai dengan template CSV yang disediakan. Kolom <strong>nik, name, email, office_code, position_code, dan is_active</strong> wajib diisi.</p>
             <form action="{{ route('admin.import.store', 'employees') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
                 <div>

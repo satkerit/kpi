@@ -140,8 +140,8 @@ final class EmployeeAdminController extends Controller
     {
         return [
             'offices' => Office::orderBy('name')->get(['id', 'name']),
-            'divisions' => Division::orderBy('name')->get(['id', 'name']),
-            'departments' => Department::orderBy('name')->get(['id', 'name']),
+            'divisions' => Division::orderByRaw('COALESCE(parent_id, id)')->orderBy('parent_id')->orderBy('name')->get(['id', 'name', 'parent_id']),
+            'departments' => Department::orderByRaw('COALESCE(parent_id, id)')->orderBy('parent_id')->orderBy('name')->get(['id', 'name', 'parent_id', 'category']),
             'positions' => Position::orderBy('level')->orderBy('name')->get(['id', 'name', 'level']),
             'supervisors' => Employee::when(
                 $employee->exists,

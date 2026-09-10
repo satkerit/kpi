@@ -18,9 +18,11 @@ class Department extends Model
     protected $fillable = [
         'division_id',
         'office_id',
+        'parent_id',
         'name',
         'code',
         'description',
+        'category',
         'head_id',
         'is_active',
     ];
@@ -30,6 +32,22 @@ class Department extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Bagian induk (null = bagian tingkat atas).
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /**
+     * Sub-bagian.
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id');
     }
 
     public function division(): BelongsTo

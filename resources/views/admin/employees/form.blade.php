@@ -85,7 +85,7 @@
                         <option value="">-- Pilih Divisi --</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->id }}" {{ old('division_id', $employee->division_id) == $division->id ? 'selected' : '' }}>
-                                {{ $division->name }}
+                                {{ $division->parent_id ? '↳ ' : '' }}{{ $division->name }}
                             </option>
                         @endforeach
                     </select>
@@ -99,7 +99,7 @@
                         <option value="">-- Pilih Bagian --</option>
                         @foreach($departments as $department)
                             <option value="{{ $department->id }}" {{ old('department_id', $employee->department_id) == $department->id ? 'selected' : '' }}>
-                                {{ $department->name }}
+                                {{ $department->parent_id ? '↳ ' : '' }}{{ $department->name }}@if($department->category) ({{ ucfirst($department->category) }})@endif
                             </option>
                         @endforeach
                     </select>

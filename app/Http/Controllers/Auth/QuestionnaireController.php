@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Domains\AccessControl\Middleware\ResolveKpiEmployee;
+use App\Domains\Evaluation\Models\KpiScore;
 use App\Domains\Evaluation\Services\QuestionnaireAssignmentService;
+use App\Domains\Evaluation\Strategies\StrategyFactory;
 use App\Domains\HumanResource\Models\Employee;
 use App\Domains\MasterKpi\Models\KpiPeriod;
+use App\Domains\MasterKpi\Models\KpiSubcriteria;
+use App\Domains\MasterKpi\Models\RatingScale;
 use App\Http\Controllers\Admin\MailSettingController;
 use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
@@ -185,9 +190,9 @@ final class QuestionnaireController extends Controller
     }
 
     /**
-     * Formulir pengisian KPI: pastikan penugasan ada untuk periode aktif.
-     * Identitas pegawai diambil dari request attribute 'kpi_employee'
-     * yang diset oleh middleware ResolveKpiEmployee (bisa via OTP atau login biasa).
+     * Satu halaman kuesioner: SEMUA penugasan (atasan, bawahan, rekan, diri)
+     * tampil sekaligus, submit sekali. Identitas dari request attribute
+     * 'kpi_employee' yang diset middleware ResolveKpiEmployee.
      */
     public function form(Request $request, QuestionnaireAssignmentService $service): View|RedirectResponse
     {
@@ -214,17 +219,131 @@ final class QuestionnaireController extends Controller
         $assignments = $me->assignmentsAsEvaluator()
             ->where('period_id', $period->id)
             ->with(['evaluatee.position', 'evaluatee.office', 'evaluatee.department', 'scores'])
-            ->get()
-            ->groupBy('evaluator_type');
+            ->get();
+
+        $sections = [];
+        foreach ($assignments as $assignment) {
+            $sections[] = [
+                'assignment' => $assignment,
+                'subcriteria' => StrategyFactory::make($assignment->evaluator_type)->validSubcriteria(),
+            ];
+        }
+
+        $maxScore = (float) (RatingScale::query()->where('period_id', $period->id)->max('max_value') ?: 10);
+        $allowNotObserved = (bool) ($period->setting('allow_not_observed') ?? true);
+        $pendingCount = $assignments->where('status', 'pending')->count();
 
         return view('questionnaire.form', [
             'period' => $period,
-            'groups' => $assignments,
+            'me' => $me,
+            'sections' => $sections,
+            'maxScore' => $maxScore,
+            'allowNotObserved' => $allowNotObserved,
+            'pendingCount' => $pendingCount,
             'labels' => [
-                'P1' => 'Penilaian Bawahan',
-                'P2' => 'Penilaian Rekan Selevel',
                 'P3' => 'Penilaian Atasan Langsung',
+                'P2' => 'Penilaian Rekan Selevel',
+                'P1' => 'Penilaian Bawahan',
+                'SELF' => 'Penilaian Diri Sendiri',
             ],
         ]);
+    }
+
+    /**
+     * Submit seluruh kuesioner sekaligus: validasi per assignment,
+     * simpan semua skor dalam satu transaksi DB.
+     */
+    public function submitAll(Request $request): RedirectResponse
+    {
+        /** @var Employee|null $me */
+        $me = $request->attributes->get('kpi_employee');
+
+        if (! $me) {
+            return redirect()->route('questionnaire.start')
+                ->with('error', 'Sesi kuesioner tidak valid atau telah berakhir.');
+        }
+
+        $period = KpiPeriod::query()
+            ->where('status', 'active')
+            ->latest('id')
+            ->first()
+            ?? KpiPeriod::query()->latest('id')->first();
+
+        if (! $period) {
+            return back()->with('error', 'Belum ada periode KPI yang dibuka.');
+        }
+
+        $maxScore = (float) (RatingScale::query()->where('period_id', $period->id)->max('max_value') ?: 10);
+        $allowNotObserved = (bool) ($period->setting('allow_not_observed') ?? true);
+
+        $assignments = $me->assignmentsAsEvaluator()
+            ->where('period_id', $period->id)
+            ->where('status', 'pending')
+            ->get();
+
+        if ($assignments->isEmpty()) {
+            return redirect()->route('questionnaire.form')->with('success', 'Semua penilaian sudah disubmit. Terima kasih.');
+        }
+
+        // Validasi dinamis: scores.{assignmentId}.{subcriteriaId}
+        $rules = [];
+        foreach ($assignments as $assignment) {
+            $subcriteria = StrategyFactory::make($assignment->evaluator_type)->validSubcriteria();
+            foreach ($subcriteria as $sc) {
+                $key = "scores.{$assignment->id}.{$sc->id}";
+                $rules[$key] = ['nullable', 'numeric', 'min:0', "max:{$maxScore}"];
+                $rules["not_observed.{$assignment->id}.{$sc->id}"] = ['sometimes', 'boolean'];
+            }
+            $rules["comments.{$assignment->id}.*"] = ['nullable', 'string', 'max:1000'];
+        }
+
+        $validated = $request->validate(
+            array_merge($rules, ['scores' => ['required', 'array']]),
+            ['scores.required' => 'Isi minimal satu nilai penilaian.']
+        );
+
+        // Setiap subkriteria wajib diisi ATAU ditandai "Tidak Diamati".
+        foreach ($assignments as $assignment) {
+            $subcriteria = StrategyFactory::make($assignment->evaluator_type)->validSubcriteria();
+            foreach ($subcriteria as $sc) {
+                $raw = $validated['scores'][$assignment->id][$sc->id] ?? null;
+                $notObserved = $allowNotObserved && ! empty($validated['not_observed'][$assignment->id][$sc->id]);
+
+                if (! $notObserved && $raw === null) {
+                    return back()
+                        ->withErrors(["scores.{$assignment->id}.{$sc->id}" => "Nilai {$sc->name} untuk {$assignment->evaluatee->name} wajib diisi atau tandai \"Tidak Diamati\"."])
+                        ->withInput();
+                }
+            }
+        }
+
+        DB::transaction(function () use ($validated, $assignments, $allowNotObserved) {
+            foreach ($assignments as $assignment) {
+                foreach ($validated['scores'][$assignment->id] ?? [] as $subcriteriaId => $rawScore) {
+                    $subcriteria = KpiSubcriteria::query()->findOrFail($subcriteriaId);
+                    $isNotObserved = $allowNotObserved && ! empty($validated['not_observed'][$assignment->id][$subcriteriaId]);
+
+                    $weightedScore = $isNotObserved || $rawScore === null
+                        ? 0
+                        : round(((float) $rawScore * (float) $subcriteria->weight) / 100.0, 2);
+
+                    KpiScore::query()->updateOrCreate(
+                        [
+                            'assignment_id' => $assignment->id,
+                            'subcriteria_id' => $subcriteriaId,
+                        ],
+                        [
+                            'raw_score' => $isNotObserved ? null : $rawScore,
+                            'weighted_score' => $weightedScore,
+                            'comment' => $validated['comments'][$assignment->id][$subcriteriaId] ?? null,
+                        ]
+                    );
+                }
+
+                $assignment->update(['status' => 'submitted']);
+            }
+        });
+
+        return redirect()->route('questionnaire.form')->with('success', 'Seluruh penilaian berhasil disubmit. Terima kasih atas partisipasi Anda.');
     }
 }

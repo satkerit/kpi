@@ -34,6 +34,30 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Bagian Induk</label>
+                    <select name="parent_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
+                        <option value="">— Bagian Utama (tanpa induk) —</option>
+                        @foreach($parentDepartments as $parent)
+                            @continue($record->exists && $parent->id === $record->id)
+                            <option value="{{ $parent->id }}" {{ (int) old('parent_id', $record->parent_id) === $parent->id ? 'selected' : '' }}>
+                                {{ $parent->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-ink-muted mt-1">Kosongkan jika bagian tingkat atas. Pilih induk untuk membuat sub-bagian.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Kategori Bagian</label>
+                    <select name="category" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
+                        <option value="">-- Pilih Kategori --</option>
+                        <option value="operasional" {{ old('category', $record->category) === 'operasional' ? 'selected' : '' }}>Operasional</option>
+                        <option value="bisnis" {{ old('category', $record->category) === 'bisnis' ? 'selected' : '' }}>Bisnis</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
                     <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Divisi</label>
                     <select name="division_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
                         <option value="">-- Pilih Divisi --</option>
@@ -45,13 +69,26 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Kantor</label>
+                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Level Kantor</label>
                     <select name="office_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
-                        <option value="">-- Pilih Kantor --</option>
-                        @foreach($offices as $office)
-                            <option value="{{ $office->id }}" {{ old('office_id', $record->office_id) == $office->id ? 'selected' : '' }}>
-                                {{ $office->name }}
-                            </option>
+                        <option value="">-- Pilih Level Kantor --</option>
+                        @foreach($offices->groupBy('type') as $type => $group)
+                            @php
+                                $typeLabel = match($type) {
+                                    'head_office' => 'KPO / Kantor Pusat',
+                                    'branch'      => 'Kantor Cabang',
+                                    'kpo'         => 'KPO',
+                                    'kas'         => 'Kantor Kas',
+                                    default       => ucfirst($type),
+                                };
+                            @endphp
+                            <optgroup label="{{ $typeLabel }}">
+                                @foreach($group as $office)
+                                    <option value="{{ $office->id }}" {{ old('office_id', $record->office_id) == $office->id ? 'selected' : '' }}>
+                                        {{ $office->name }} ({{ strtoupper($office->type) }})
+                                    </option>
+                                @endforeach
+                            </optgroup>
                         @endforeach
                     </select>
                 </div>

@@ -48,6 +48,7 @@
                 <thead>
                     <tr class="bg-navy-tint text-left text-[11px] font-bold text-ink-soft uppercase tracking-wider">
                         <th class="px-5 py-3">Nama Divisi</th>
+                        <th class="px-4 py-3">Induk</th>
                         <th class="px-4 py-3">Kode</th>
                         <th class="px-4 py-3">Kepala Divisi</th>
                         <th class="px-4 py-3 text-center">Pegawai</th>
@@ -58,7 +59,20 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse($records as $division)
                         <tr class="hover:bg-navy-tint/50 transition">
-                            <td class="px-5 py-3.5 font-bold text-ink">{{ $division->name }}</td>
+                            <td class="px-5 py-3.5 font-bold text-ink">
+                                @if($division->parent_id)
+                                    <span class="text-ink-muted">↳</span> {{ $division->name }}
+                                @else
+                                    {{ $division->name }}
+                                @endif
+                            </td>
+                            <td class="px-4 py-3.5 text-ink-soft">
+                                @if($division->parent)
+                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 bg-blue-50 text-blue-700 ring-blue-600/20">{{ $division->parent->name }}</span>
+                                @else
+                                    <span class="text-xs text-ink-muted">Divisi Utama</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3.5"><span class="font-mono text-xs font-semibold text-navy bg-navy-tint px-2 py-1 rounded-md">{{ $division->code }}</span></td>
                             <td class="px-4 py-3.5 text-ink-soft">{{ $division->head?->name ?? '—' }}</td>
                             <td class="px-4 py-3.5 text-center num font-semibold text-ink-soft">{{ $division->employees_count }}</td>
@@ -77,7 +91,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-5 py-12 text-center text-ink-muted">Belum ada data divisi.</td>
+                            <td colspan="7" class="px-5 py-12 text-center text-ink-muted">Belum ada data divisi.</td>
                         </tr>
                     @endforelse
                 </tbody>

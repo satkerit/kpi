@@ -8,6 +8,7 @@ use App\Domains\HumanResource\Models\Department;
 use App\Domains\HumanResource\Models\Division;
 use App\Domains\HumanResource\Models\Employee;
 use App\Domains\HumanResource\Models\Office;
+use Illuminate\Validation\Rule;
 
 final class DepartmentController extends MasterDataController
 {
@@ -30,6 +31,8 @@ final class DepartmentController extends MasterDataController
             'code' => ['required', 'string', 'max:20', 'unique:departments,code'.($recordId ? ",{$recordId}" : '')],
             'division_id' => ['nullable', 'integer', 'exists:divisions,id'],
             'office_id' => ['nullable', 'integer', 'exists:offices,id'],
+            'parent_id' => ['nullable', 'integer', 'exists:departments,id', Rule::notIn($recordId ? [$recordId] : [])],
+            'category' => ['nullable', 'string', 'in:operasional,bisnis'],
             'description' => ['nullable', 'string', 'max:500'],
             'head_id' => ['nullable', 'integer', 'exists:employees,id'],
             'is_active' => ['boolean'],
@@ -40,7 +43,9 @@ final class DepartmentController extends MasterDataController
     {
         return Department::query()
             ->withCount('employees')
-            ->with(['division:id,name', 'office:id,name'])
+            ->with(['division:id,name', 'office:id,name,type', 'parent:id,name'])
+            ->orderByRaw('COALESCE(parent_id, id)')
+            ->orderBy('parent_id')
             ->orderBy('name');
     }
 
@@ -51,8 +56,9 @@ final class DepartmentController extends MasterDataController
     {
         return [
             'divisions' => Division::orderBy('name')->get(['id', 'name']),
-            'offices' => Office::orderBy('name')->get(['id', 'name']),
+            'offices' => Office::orderBy('type')->orderBy('name')->get(['id', 'name', 'type']),
             'employees' => Employee::orderBy('name')->get(['id', 'name', 'nik']),
+            'parentDepartments' => Department::whereNull('parent_id')->orderBy('name')->get(['id', 'name']),
         ];
     }
 }

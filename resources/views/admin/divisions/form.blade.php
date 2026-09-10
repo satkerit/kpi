@@ -32,16 +32,31 @@
                 </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Kepala Divisi</label>
-                <select name="head_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
-                    <option value="">-- Pilih Kepala Divisi --</option>
-                    @foreach($employees as $employee)
-                        <option value="{{ $employee->id }}" {{ old('head_id', $record->head_id) == $employee->id ? 'selected' : '' }}>
-                            {{ $employee->name }} ({{ $employee->nik }})
-                        </option>
-                    @endforeach
-                </select>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Divisi Induk</label>
+                    <select name="parent_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
+                        <option value="">— Divisi Utama (tanpa induk) —</option>
+                        @foreach($divisions as $division)
+                            @continue($record->exists && $division->id === $record->id)
+                            <option value="{{ $division->id }}" {{ (int) old('parent_id', $record->parent_id) === $division->id ? 'selected' : '' }}>
+                                {{ $division->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-ink-muted mt-1">Kosongkan jika ini divisi tingkat atas. Pilih induk untuk membuat sub-divisi.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Kepala Divisi</label>
+                    <select name="head_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
+                        <option value="">-- Pilih Kepala Divisi --</option>
+                        @foreach($employees as $employee)
+                            <option value="{{ $employee->id }}" {{ old('head_id', $record->head_id) == $employee->id ? 'selected' : '' }}>
+                                {{ $employee->name }} ({{ $employee->nik }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
 
             <div class="flex items-center gap-3 mt-2.5">

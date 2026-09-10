@@ -1,32 +1,10 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verifikasi OTP — KPI 360</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'sans-serif'],
-                        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
-                    },
-                    colors: {
-                        ink: { DEFAULT: '#16233a', soft: '#3d4c63', muted: '#7c8aa0' },
-                        navy: { DEFAULT: '#16324f', deep: '#0f2438', tint: '#eef3f8' },
-                        gold: { DEFAULT: '#b98e1f', soft: '#f6ecd4', deep: '#8a6a12' },
-                        paper: '#f6f7f9',
-                    },
-                },
-            },
-        };
-    </script>
-</head>
-<body class="bg-paper font-sans text-ink antialiased min-h-screen flex items-center justify-center p-4 sm:p-6">
+@extends('layouts.questionnaire')
+
+@section('title', 'Verifikasi OTP — KPI 360')
+@section('period_label', 'Langkah 2 dari 2 · Masukkan Kode OTP')
+
+@section('content')
+<div class="flex justify-center">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 p-6 sm:p-8">
         <div class="flex items-center gap-3 mb-6">
             <div class="w-10 h-10 rounded-xl bg-navy-deep flex items-center justify-center font-extrabold text-gold text-sm">360</div>
@@ -80,5 +58,5 @@
             </a>
         </form>
     </div>
-</body>
-</html>
+</div>
+@endsection

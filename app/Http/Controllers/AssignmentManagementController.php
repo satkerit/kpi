@@ -23,7 +23,7 @@ final class AssignmentManagementController extends Controller
      */
     public function index(Request $request): View
     {
-        $periods = KpiPeriod::query()->orderByDesc('year')->orderByDesc('semester')->get();
+        $periods = KpiPeriod::query()->orderByDesc('year')->orderByDesc('id')->get();
         $selectedPeriodId = $request->query('period_id', $periods->first()?->id);
 
         $assignments = KpiAssignment::query()

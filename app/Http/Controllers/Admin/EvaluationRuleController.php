@@ -26,7 +26,7 @@ final class EvaluationRuleController extends Controller
             ->orderBy('id')
             ->paginate(20);
 
-        $periods = KpiPeriod::query()->orderByDesc('year')->orderByDesc('semester')->get();
+        $periods = KpiPeriod::query()->orderByDesc('year')->orderByDesc('id')->get();
 
         return view('admin.evaluation_rules.index', compact('records', 'periods'));
     }

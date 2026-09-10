@@ -48,7 +48,7 @@
             <label class="block text-xs font-semibold text-ink-muted mb-1.5 uppercase tracking-wide">Periode</label>
             <select name="period_id" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none">
                 @foreach($periods as $p)
-                    <option value="{{ $p->id }}" @selected($selectedPeriodId == $p->id)>{{ $p->name }} ({{ $p->year }}/S{{ $p->semester }})</option>
+                    <option value="{{ $p->id }}" @selected($selectedPeriodId == $p->id)>{{ $p->name }} ({{ $p->year }})</option>
                 @endforeach
             </select>
         </div>

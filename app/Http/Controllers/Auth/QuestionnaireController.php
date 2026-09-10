@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Domains\AccessControl\Middleware\ResolveKpiEmployee;
 use App\Domains\Evaluation\Services\QuestionnaireAssignmentService;
 use App\Domains\HumanResource\Models\Employee;
 use App\Domains\MasterKpi\Models\KpiPeriod;
 use App\Http\Controllers\Admin\MailSettingController;
 use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -65,11 +64,15 @@ final class QuestionnaireController extends Controller
         }
 
         // Cooldown: cegah spam kirim ulang OTP.
+        // OTP lama masih valid — arahkan langsung ke form verifikasi agar bisa digunakan.
         $cooldownKey = 'questionnaire.otp.cooldown.'.$employee->nik;
         if (Cache::has($cooldownKey)) {
             $ttl = (int) Cache::get($cooldownKey.'.ttl', self::RESEND_COOLDOWN);
 
-            return back()->withErrors(['nik' => "OTP sudah dikirim. Tunggu {$ttl} detik sebelum meminta ulang."])->onlyInput('nik');
+            return redirect()
+                ->route('questionnaire.verify.form')
+                ->with('status', "OTP sudah dikirim sebelumnya. Masukkan kode dari email Anda (tunggu {$ttl} detik untuk minta ulang).")
+                ->with('otp_nik', $employee->nik);
         }
 
         $otp = (string) random_int(100000, 999999);
@@ -114,13 +117,16 @@ final class QuestionnaireController extends Controller
     }
 
     /**
-     * Verifikasi OTP → login otomatis → arahkan ke formulir KPI.
+     * Verifikasi OTP → buat sesi kuesioner (TANPA login User) → arahkan ke formulir KPI.
+     *
+     * Pegawai TIDAK wajib memiliki akun login (users) — identitas cukup dari
+     * marker session yang terikat NIK + IP, berlaku 2 jam.
      *
      * Keamanan:
      * - OTP diverifikasi via Hash::check (timing-safe, lawan timing attack).
      * - Attempt counter: maks 5 salah → cache diinvalidasi (cegah brute force 6-digit).
      * - OTP one-time: langsung dihapus setelah verifikasi sukses.
-     * - Session regenerate setelah login (cegah session fixation).
+     * - Session regenerate (cegah session fixation) sebelum menulis marker.
      */
     public function verify(Request $request): RedirectResponse
     {
@@ -164,31 +170,33 @@ final class QuestionnaireController extends Controller
 
         $employee = Employee::query()->where('nik', $validated['nik'])->firstOrFail();
 
-        // Pegawai tanpa akun login tidak bisa masuk web guard (guard users).
-        if (! $employee->user_id) {
+        if (! $employee->is_active) {
             return redirect()->route('questionnaire.start')
-                ->withErrors(['nik' => 'Pegawai ini belum memiliki akun login. Hubungi administrator.']);
+                ->withErrors(['nik' => 'Pegawai tidak aktif. Hubungi administrator.']);
         }
 
-        Auth::loginUsingId($employee->user_id, remember: false);
+        // Sesi kuesioner: marker session terikat IP + user-agent, TANPA login web guard.
         $request->session()->regenerate();
+        $request->session()->put(ResolveKpiEmployee::SESSION_KEY, $employee->id);
+        $request->session()->put(ResolveKpiEmployee::SESSION_EXPIRY, now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp);
+        $request->session()->put(ResolveKpiEmployee::SESSION_BIND, ResolveKpiEmployee::bindHash($request));
 
         return redirect()->intended(route('questionnaire.form'));
     }
 
     /**
      * Formulir pengisian KPI: pastikan penugasan ada untuk periode aktif.
+     * Identitas pegawai diambil dari request attribute 'kpi_employee'
+     * yang diset oleh middleware ResolveKpiEmployee (bisa via OTP atau login biasa).
      */
-    public function form(QuestionnaireAssignmentService $service): View|RedirectResponse
+    public function form(Request $request, QuestionnaireAssignmentService $service): View|RedirectResponse
     {
-        /** @var User $authUser */
-        $authUser = Auth::user();
-        $me = $authUser->employee;
+        /** @var Employee|null $me */
+        $me = $request->attributes->get('kpi_employee');
 
         if (! $me) {
-            Auth::logout();
-
-            return redirect()->route('login')->with('error', 'Akun ini tidak terhubung dengan data pegawai.');
+            return redirect()->route('questionnaire.start')
+                ->with('error', 'Sesi kuesioner tidak valid atau telah berakhir. Silakan masukkan NIK kembali.');
         }
 
         $period = KpiPeriod::query()

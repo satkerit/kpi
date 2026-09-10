@@ -97,7 +97,7 @@
                         <th class="px-4 py-3">Bagian</th>
                         <th class="px-4 py-3">Jabatan</th>
                         <th class="px-4 py-3">Atasan</th>
-                        <th class="px-4 py-3 text-center">Role</th>
+                        <th class="px-4 py-3 text-center">Akun</th>
                         <th class="px-5 py-3 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -124,19 +124,21 @@
                             </td>
                             <td class="px-4 py-3.5 text-ink-soft text-xs">{{ $employee->supervisor?->name ?? '—' }}</td>
                             <td class="px-4 py-3.5 text-center">
-                                @if($employee->roles->count())
-                                    <div class="flex flex-wrap justify-center gap-1">
-                                        @foreach($employee->roles as $role)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gold-soft text-gold-deep">{{ $role->name }}</span>
-                                        @endforeach
-                                    </div>
+                                @if($employee->user)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20">
+                                        <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>
+                                        Terhubung
+                                    </span>
                                 @else
-                                    <span class="text-ink-muted text-[11px]">—</span>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 ring-1 ring-slate-400/20">
+                                        <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>
+                                        Belum ada
+                                    </span>
                                 @endif
                             </td>
                             <td class="px-5 py-3.5 text-right space-x-2">
                                 <a href="{{ route('admin.employees.edit', $employee) }}" class="text-xs font-semibold text-navy hover:underline">Edit</a>
-                                <form method="POST" action="{{ route('admin.employees.destroy', $employee) }}" class="inline" onsubmit="return confirm('Hapus pegawai ini? Data user login juga akan terhapus.')">
+                                <form method="POST" action="{{ route('admin.employees.destroy', $employee) }}" class="inline" onsubmit="return confirm('Hapus pegawai ini?')">
                                     @csrf @method('DELETE')
                                     <button class="text-xs font-semibold text-rose-600 hover:underline">Hapus</button>
                                 </form>
@@ -144,7 +146,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-5 py-12 text-center text-ink-muted">Belum ada data pegawai.</td>
+                            <td colspan="9" class="px-5 py-12 text-center text-ink-muted">Tidak ada pegawai yang ditemukan.</td>
                         </tr>
                     @endforelse
                 </tbody>

@@ -18,9 +18,17 @@ final class EvaluationFormController extends Controller
 {
     /**
      * Tampilkan lembar form penilaian berdasarkan tipe penilai (P1/P2/P3/SELF).
+     * Akses dibatasi: hanya evaluator assignment yang bersangkutan.
      */
-    public function show(KpiAssignment $assignment): View
+    public function show(Request $request, KpiAssignment $assignment): View|RedirectResponse
     {
+        $me = $request->attributes->get('kpi_employee');
+
+        if (! $me || $me->id !== $assignment->evaluator_id) {
+            return redirect()->route('questionnaire.start')
+                ->with('error', 'Sesi tidak valid atau Anda tidak memiliki akses ke form ini.');
+        }
+
         $assignment->load(['evaluatee.office', 'evaluatee.division', 'evaluatee.position', 'period', 'scores']);
         $strategy = StrategyFactory::make($assignment->evaluator_type);
         $subcriteriaList = $strategy->validSubcriteria();
@@ -48,6 +56,14 @@ final class EvaluationFormController extends Controller
      */
     public function submit(Request $request, KpiAssignment $assignment): RedirectResponse
     {
+        // Validasi kepemilikan: hanya evaluator assignment yang bisa submit.
+        $me = $request->attributes->get('kpi_employee');
+
+        if (! $me || $me->id !== $assignment->evaluator_id) {
+            return redirect()->route('questionnaire.start')
+                ->with('error', 'Sesi tidak valid atau Anda tidak memiliki akses ke form ini.');
+        }
+
         $maxScore = $this->maxScoreFor($assignment->period_id);
         $allowNotObserved = (bool) ($assignment->period?->setting('allow_not_observed') ?? true);
 
@@ -61,9 +77,9 @@ final class EvaluationFormController extends Controller
         ]);
 
         foreach ($validated['scores'] as $subcriteriaId => $rawScore) {
-            $isNotObserved = $allowNotObserved && !empty($validated['not_observed'][$subcriteriaId]);
+            $isNotObserved = $allowNotObserved && ! empty($validated['not_observed'][$subcriteriaId]);
 
-            if (!$isNotObserved && $rawScore === null) {
+            if (! $isNotObserved && $rawScore === null) {
                 return back()->withErrors(["scores.{$subcriteriaId}" => 'Nilai wajib diisi atau tandai "Tidak Diamati".'])->withInput();
             }
         }
@@ -71,7 +87,7 @@ final class EvaluationFormController extends Controller
         DB::transaction(function () use ($validated, $assignment, $allowNotObserved) {
             foreach ($validated['scores'] as $subcriteriaId => $rawScore) {
                 $subcriteria = KpiSubcriteria::query()->findOrFail($subcriteriaId);
-                $isNotObserved = $allowNotObserved && !empty($validated['not_observed'][$subcriteriaId]);
+                $isNotObserved = $allowNotObserved && ! empty($validated['not_observed'][$subcriteriaId]);
 
                 // "Tidak Diamati": raw_score null → dikeluarkan dari pembobotan (normalisasi bobot di service).
                 $weightedScore = $isNotObserved || $rawScore === null
@@ -94,6 +110,6 @@ final class EvaluationFormController extends Controller
             $assignment->update(['status' => 'submitted']);
         });
 
-        return redirect()->route('kpi.index')->with('success', 'Form penilaian berhasil disubmit.');
+        return redirect()->route('questionnaire.form')->with('success', 'Form penilaian berhasil disubmit.');
     }
 }

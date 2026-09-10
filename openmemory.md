@@ -25,11 +25,18 @@ Framework: Laravel 11+, PHP 8.4, MySQL prod / SQLite :memory: test.
 - `employees` tabel mandiri — TIDAK extend `Authenticatable`, TIDAK kait `user_role`.
 - `employees.user_id` nullable FK ke `users` — boleh null (pegawai belum punya akun).
 - `User::employee()` HasOne ke Employee.
-- Questionnaire OTP: login via `Auth::loginUsingId($employee->user_id)` — butuh `user_id` non-null.
+- **Kuesioner OTP: pegawai TIDAK wajib punya akun login.** Alur: NIK → OTP → sesi kuesioner (marker session, TANPA `Auth::loginUsingId`).
+- Sesi kuesioner: `questionnaire.employee_id` + `questionnaire.expires_at` (2 jam) + `questionnaire.bind` (SHA256 IP+UA) disimpan di session.
+- Middleware `ResolveKpiEmployee` (`kpi.employee`): resolusi dari sesi OTP (prioritas) atau fallback akun login biasa.
 - Import pegawai: pisah `User::firstOrCreate` + `Employee::updateOrCreate(user_id)`.
 - Validasi controller: semua `exists:employees,id` — BUKAN `exists:users,id`.
+- **Trap RBAC**: method/relasi role (`getRoleSlugs`, `roles`, `syncRoles`) hanya ada di `User` (trait `HasRoles`) — BUKAN di `Employee`. Di view pegawai selalu lewat `$employee->user?->...` + eager load `user.roles:id,name,slug`.
 
-## Components
+### Middleware
+
+- `CheckRole` (`role`): cek `user->hasRole(...$roles)` — hanya untuk rute admin (web guard).
+- `ResolveKpiEmployee` (`kpi.employee`): resolusi pegawai penilai. Jalur 1: sesi OTP (marker session TTL 2 jam, terikat IP+UA via SHA256). Jalur 2: fallback `Auth::user()->employee`. Hasil: `request->attributes->set('kpi_employee', $employee)`.
+- Rute kuesioner + evaluations pakai `kpi.employee` (bukan `auth`) sehingga pegawai tanpa akun login bisa mengisi KPI.
 
 ### HumanResource Domain
 

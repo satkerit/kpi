@@ -37,7 +37,7 @@
         </div>
 
         <p class="text-sm text-ink-soft mb-6 leading-relaxed">
-            Masukkan Nomor Induk Karyawan (NIK). Kode OTP akan dikirimkan ke email resmi yang terdaftar pada akun Anda.
+            Masukkan Nomor Induk Karyawan (NIK). Kode OTP akan dikirimkan ke email resmi yang terdaftar pada data pegawai.
         </p>
 
         @if ($errors->any())

@@ -32,7 +32,7 @@
                     <select name="period_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition" required>
                         <option value="">— Pilih Periode —</option>
                         @foreach($periods as $period)
-                            <option value="{{ $period->id }}">{{ $period->name }} ({{ $period->year }} S{{ $period->semester }})</option>
+                            <option value="{{ $period->id }}">{{ $period->name }} ({{ $period->year }})</option>
                         @endforeach
                     </select>
                 </div>

@@ -66,12 +66,34 @@ Route::get('/', function () {
 
 /*
 |---------------------------------------------------------------------------
+| Kuesioner KPI (akses via sesi OTP — pegawai TIDAK wajib punya akun login)
+|---------------------------------------------------------------------------
+|
+| Middleware `kpi.employee` meresolusi pegawai penilai dari sesi OTP
+| (atau fallback akun login). Tanpa identitas valid → dialihkan ke /kuesioner.
+*/
+
+Route::middleware('kpi.employee')->group(function () {
+    Route::get('/kuesioner/form', [QuestionnaireController::class, 'form'])->name('questionnaire.form');
+
+    Route::prefix('evaluations')->name('evaluations.')->group(function () {
+        Route::get('/{assignment}/form', [EvaluationFormController::class, 'show'])
+            ->whereNumber('assignment')
+            ->name('form');
+
+        Route::post('/{assignment}/submit', [EvaluationFormController::class, 'submit'])
+            ->whereNumber('assignment')
+            ->name('submit');
+    });
+});
+
+/*
+|---------------------------------------------------------------------------
 | Protected Routes (Require Authentication)
 |---------------------------------------------------------------------------
 */
 
 Route::middleware('auth')->group(function () {
-    Route::get('/kuesioner/form', [QuestionnaireController::class, 'form'])->name('questionnaire.form');
     Route::get('/kpi', [KpiDashboardController::class, 'index'])->name('kpi.index');
     Route::get('/kpi/export-csv', [KpiDashboardController::class, 'exportCsv'])->name('kpi.exportCsv');
     Route::post('/kpi/calculate', [EvaluationResultController::class, 'store'])->name('kpi.calculate');
@@ -98,16 +120,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/generate', [AssignmentManagementController::class, 'generate'])->name('generate');
         Route::post('/generate-peers', [AssignmentManagementController::class, 'generatePeers'])->name('generatePeers');
         Route::delete('/{assignment}', [AssignmentManagementController::class, 'destroy'])->whereNumber('assignment')->name('destroy');
-    });
-
-    Route::prefix('evaluations')->name('evaluations.')->group(function () {
-        Route::get('/{assignment}/form', [EvaluationFormController::class, 'show'])
-            ->whereNumber('assignment')
-            ->name('form');
-
-        Route::post('/{assignment}/submit', [EvaluationFormController::class, 'submit'])
-            ->whereNumber('assignment')
-            ->name('submit');
     });
 
     /*

@@ -46,17 +46,24 @@
             </div>
 
             @if(!$employee->exists)
-                <div>
-                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Password <span class="text-rose-500">*</span></label>
-                    <input type="password" name="password" placeholder="Minimal 8 karakter"
-                        class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition" required>
-                    <p class="text-xs text-ink-muted mt-1">Password akan di-hash otomatis (bcrypt).</p>
+                <div class="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                    Pegawai baru tidak memiliki akun login. Setelah pegawai disimpan, buat akun melalui menu <strong>Manajemen User</strong> dan kaitkan ke pegawai ini.
                 </div>
             @else
                 <div>
-                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Password Baru (kosongkan jika tidak diubah)</label>
-                    <input type="password" name="password" placeholder="Minimal 8 karakter"
-                        class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
+                    <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Akun Login Terkait</label>
+                    @if($employee->user)
+                        <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-ink">
+                            <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span class="font-medium">{{ $employee->user->email }}</span>
+                            <span class="text-xs text-ink-muted ml-auto">Kelola role & password di <a href="{{ route('admin.users.index') }}" class="text-navy hover:underline font-semibold">Manajemen User</a></span>
+                        </div>
+                    @else
+                        <div class="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Belum ada akun login. Buat akun di <a href="{{ route('admin.users.index') }}" class="font-semibold hover:underline">Manajemen User</a> dan kaitkan ke pegawai ini.
+                        </div>
+                    @endif
                 </div>
             @endif
 
@@ -112,29 +119,19 @@
 
             <div>
                 <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Atasan Langsung</label>
-                <select name="direct_supervisor_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
+                <select name="direct_supervisor_id" id="direct_supervisor_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
                     <option value="">-- Pilih Atasan --</option>
                     @foreach($supervisors as $sup)
-                        <option value="{{ $sup->id }}" {{ old('direct_supervisor_id', $employee->direct_supervisor_id) == $sup->id ? 'selected' : '' }}>
+                        <option value="{{ $sup->id }}"
+                            data-office="{{ $sup->office_id }}"
+                            data-division="{{ $sup->division_id }}"
+                            data-department="{{ $sup->department_id }}"
+                            {{ old('direct_supervisor_id', $employee->direct_supervisor_id) == $sup->id ? 'selected' : '' }}>
                             {{ $sup->name }} ({{ $sup->nik }})
                         </option>
                     @endforeach
                 </select>
-                <p class="text-xs text-ink-muted mt-1">Pegawai tidak bisa menjadi atasan dirinya sendiri.</p>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Peran & Akses (Role)</label>
-                <div class="flex flex-wrap gap-2">
-                    @foreach($roles as $role)
-                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" name="roles[]" value="{{ $role->slug }}" {{ in_array($role->slug, old('roles', $employee->getRoleSlugs())) ? 'checked' : '' }}
-                                class="w-4 h-4 rounded border-slate-300 text-gold focus:ring-gold/60">
-                            <span class="text-sm text-ink">{{ $role->name }}</span>
-                        </label>
-                    @endforeach
-                </div>
-                <p class="text-xs text-ink-muted mt-1">Pilih satu atau lebih role. Minimal 1 role untuk akses login.</p>
+                <p class="text-xs text-ink-muted mt-1">Hanya menampilkan pegawai di kantor/divisi/bagian yang sama. Pilih kantor/divisi/bagian terlebih dahulu.</p>
             </div>
 
             <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
@@ -148,4 +145,57 @@
         </form>
     </div>
 </main>
+
+<script>
+(function () {
+    const officeSelect     = document.querySelector('select[name="office_id"]');
+    const divisionSelect   = document.querySelector('select[name="division_id"]');
+    const departmentSelect = document.querySelector('select[name="department_id"]');
+    const supervisorSelect = document.getElementById('direct_supervisor_id');
+
+    // Simpan semua opsi asli kecuali placeholder
+    const allOptions = Array.from(supervisorSelect.querySelectorAll('option:not([value=""])'));
+
+    function filterSupervisors() {
+        const officeId     = officeSelect.value;
+        const divisionId   = divisionSelect.value;
+        const departmentId = departmentSelect.value;
+
+        // Tidak ada filter dipilih — tampilkan semua
+        if (! officeId && ! divisionId && ! departmentId) {
+            allOptions.forEach(opt => supervisorSelect.appendChild(opt));
+            return;
+        }
+
+        const currentVal = supervisorSelect.value;
+
+        // Hapus semua opsi non-placeholder
+        allOptions.forEach(opt => opt.remove());
+
+        // Tambahkan kembali yang cocok minimal satu kriteria yang dipilih
+        allOptions.forEach(opt => {
+            const matchOffice     = ! officeId     || opt.dataset.office     === officeId;
+            const matchDivision   = ! divisionId   || opt.dataset.division   === divisionId;
+            const matchDepartment = ! departmentId || opt.dataset.department === departmentId;
+
+            if (matchOffice && matchDivision && matchDepartment) {
+                supervisorSelect.appendChild(opt);
+            }
+        });
+
+        // Pertahankan nilai sebelumnya jika masih ada di daftar
+        supervisorSelect.value = currentVal;
+        if (supervisorSelect.value !== currentVal) {
+            supervisorSelect.value = '';
+        }
+    }
+
+    officeSelect.addEventListener('change', filterSupervisors);
+    divisionSelect.addEventListener('change', filterSupervisors);
+    departmentSelect.addEventListener('change', filterSupervisors);
+
+    // Jalankan saat load agar sesuai dengan nilai awal (edit mode)
+    filterSupervisors();
+}());
+</script>
 @endsection

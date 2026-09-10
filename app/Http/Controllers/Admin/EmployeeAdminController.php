@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Domains\AccessControl\Models\Role;
 use App\Domains\HumanResource\Models\Department;
 use App\Domains\HumanResource\Models\Division;
 use App\Domains\HumanResource\Models\Employee;
 use App\Domains\HumanResource\Models\Office;
 use App\Domains\HumanResource\Models\Position;
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +20,7 @@ final class EmployeeAdminController extends Controller
     public function index(Request $request): View
     {
         $employees = Employee::query()
-            ->with(['office:id,name', 'division:id,name', 'department:id,name', 'position:id,name,level', 'supervisor:id,name', 'user:id,email'])
+            ->with(['office:id,name', 'division:id,name', 'department:id,name', 'position:id,name,level', 'supervisor:id,name', 'user:id'])
             ->when($request->filled('search'), fn ($q) => $q->where(function ($q) use ($request) {
                 $search = $request->string('search');
                 $q->where('name', 'like', "%{$search}%")
@@ -57,36 +55,18 @@ final class EmployeeAdminController extends Controller
     {
         $data = $request->validate($this->rules());
 
-        DB::transaction(function () use ($data) {
-            // Buat akun user jika email + password disediakan
-            $userId = null;
-            if (! empty($data['email']) && ! empty($data['password'])) {
-                $user = User::create([
-                    'name' => $data['name'],
-                    'email' => $data['email'],
-                    'password' => bcrypt($data['password']),
-                ]);
-                $userId = $user->id;
-
-                if (! empty($data['roles'])) {
-                    $user->syncRoles($data['roles']);
-                }
-            }
-
-            Employee::create([
-                'user_id' => $userId,
-                'name' => $data['name'],
-                'email' => $data['email'] ?? null,
-                'nik' => $data['nik'] ?? null,
-                'phone' => $data['phone'] ?? null,
-                'office_id' => $data['office_id'] ?? null,
-                'division_id' => $data['division_id'] ?? null,
-                'department_id' => $data['department_id'] ?? null,
-                'position_id' => $data['position_id'] ?? null,
-                'direct_supervisor_id' => $data['direct_supervisor_id'] ?? null,
-                'is_active' => true,
-            ]);
-        });
+        Employee::create([
+            'name' => $data['name'],
+            'email' => $data['email'] ?? null,
+            'nik' => $data['nik'] ?? null,
+            'phone' => $data['phone'] ?? null,
+            'office_id' => $data['office_id'] ?? null,
+            'division_id' => $data['division_id'] ?? null,
+            'department_id' => $data['department_id'] ?? null,
+            'position_id' => $data['position_id'] ?? null,
+            'direct_supervisor_id' => $data['direct_supervisor_id'] ?? null,
+            'is_active' => true,
+        ]);
 
         return redirect()->route('admin.employees.index')
             ->with('success', 'Pegawai berhasil ditambahkan.');
@@ -104,46 +84,17 @@ final class EmployeeAdminController extends Controller
     {
         $data = $request->validate($this->rules($employee->id));
 
-        DB::transaction(function () use ($data, $employee) {
-            // Update data employee
-            $employee->update([
-                'name' => $data['name'],
-                'email' => $data['email'] ?? null,
-                'nik' => $data['nik'] ?? null,
-                'phone' => $data['phone'] ?? null,
-                'office_id' => $data['office_id'] ?? null,
-                'division_id' => $data['division_id'] ?? null,
-                'department_id' => $data['department_id'] ?? null,
-                'position_id' => $data['position_id'] ?? null,
-                'direct_supervisor_id' => $data['direct_supervisor_id'] ?? null,
-            ]);
-
-            // Sinkronisasi akun user jika ada
-            if ($employee->user) {
-                $employee->user->update(['name' => $data['name']]);
-
-                if (! empty($data['password'])) {
-                    $employee->user->update(['password' => bcrypt($data['password'])]);
-                }
-
-                if (isset($data['roles'])) {
-                    $employee->user->syncRoles($data['roles']);
-                }
-            } elseif (! empty($data['email']) && ! empty($data['password'])) {
-                // Buat akun user baru dan kaitkan
-                $user = User::create([
-                    'name' => $data['name'],
-                    'email' => $data['email'],
-                    'password' => bcrypt($data['password']),
-                ]);
-
-                if (! empty($data['roles'])) {
-                    $user->syncRoles($data['roles']);
-                }
-
-                $employee->update(['user_id' => $user->id]);
-            }
-        });
+        $employee->update([
+            'name' => $data['name'],
+            'email' => $data['email'] ?? null,
+            'nik' => $data['nik'] ?? null,
+            'phone' => $data['phone'] ?? null,
+            'office_id' => $data['office_id'] ?? null,
+            'division_id' => $data['division_id'] ?? null,
+            'department_id' => $data['department_id'] ?? null,
+            'position_id' => $data['position_id'] ?? null,
+            'direct_supervisor_id' => $data['direct_supervisor_id'] ?? null,
+        ]);
 
         return redirect()->route('admin.employees.index')
             ->with('success', 'Data pegawai berhasil diperbarui.');
@@ -172,7 +123,6 @@ final class EmployeeAdminController extends Controller
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255', $uniqueEmail],
-            'password' => [$employeeId ? 'nullable' : 'nullable', 'string', 'min:8'],
             'nik' => ['nullable', 'string', 'max:30', $uniqueNik],
             'phone' => ['nullable', 'string', 'max:30'],
             'office_id' => ['nullable', 'integer', 'exists:offices,id'],
@@ -180,8 +130,6 @@ final class EmployeeAdminController extends Controller
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'position_id' => ['nullable', 'integer', 'exists:positions,id'],
             'direct_supervisor_id' => ['nullable', 'integer', 'exists:employees,id'],
-            'roles' => ['nullable', 'array'],
-            'roles.*' => ['string', 'exists:roles,slug'],
         ];
     }
 
@@ -198,8 +146,7 @@ final class EmployeeAdminController extends Controller
             'supervisors' => Employee::when(
                 $employee->exists,
                 fn ($q) => $q->whereKeyNot($employee->id),
-            )->orderBy('name')->get(['id', 'name', 'nik']),
-            'roles' => Role::orderBy('name')->get(['id', 'name', 'slug']),
+            )->orderBy('name')->get(['id', 'name', 'nik', 'office_id', 'division_id', 'department_id']),
         ];
     }
 }

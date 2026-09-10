@@ -3,7 +3,7 @@
 @section('title', 'Formulir Kuesioner KPI — '.$period->name)
 
 @section('content')
-<div class="max-w-4xl mx-auto px-4 py-8">
+<div class="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
 
     {{-- Header --}}
     <div class="mb-8">
@@ -41,9 +41,9 @@
                             $done = $assignment->status === 'submitted';
                             $evaluatee = $assignment->evaluatee;
                         @endphp
-                        <div class="bg-white border border-slate-100 rounded-2xl shadow-card p-5">
-                            <div class="flex items-start justify-between gap-4">
-                                <div class="flex items-center gap-3">
+                        <div class="bg-white border border-slate-100 rounded-2xl shadow-card p-4 sm:p-5">
+                            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                <div class="flex items-center gap-3 min-w-0">
                                     <div class="w-10 h-10 rounded-xl bg-navy-tint flex items-center justify-center text-navy font-bold text-sm">
                                         {{ mb_strtoupper(mb_substr($evaluatee->name ?? '?', 0, 2)) }}
                                     </div>

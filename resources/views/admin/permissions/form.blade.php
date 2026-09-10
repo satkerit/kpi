@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<main class="flex-1 px-6 lg:px-10 py-8 max-w-2xl mx-auto w-full">
+<main class="flex-1 px-4 sm:px-6 lg:px-10 py-6 sm:py-8 max-w-2xl mx-auto w-full">
     <div class="mb-8">
         <a href="{{ route('admin.permissions.index') }}" class="inline-flex items-center gap-2 text-xs font-bold text-ink-muted hover:text-navy uppercase tracking-wider mb-3 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>

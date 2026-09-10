@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<main class="flex-1 px-6 lg:px-10 py-8">
+<main class="flex-1 px-4 sm:px-6 lg:px-10 py-6 sm:py-8 w-full min-w-0">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
             <p class="text-[11px] font-bold tracking-[0.18em] text-gold-deep uppercase mb-1.5">Manajemen Penugasan</p>
@@ -15,7 +15,7 @@
     </div>
 
     {{-- Toolbar – Period filter & generate buttons --}}
-    <div class="flex gap-4 mb-6 items-center">
+    <div class="flex flex-wrap gap-3 mb-6 items-center">
         <form method="GET" class="flex items-center gap-2">
             <label class="text-sm font-medium text-ink-soft">Periode</label>
             <select name="period_id" class="border rounded px-3 py-2" onchange="this.form.submit()">
@@ -27,12 +27,12 @@
         <form method="POST" action="{{ route('assignments.generate') }}" class="inline">
             @csrf
             <input type="hidden" name="period_id" value="{{ $selectedPeriodId }}">
-            <button class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 transition">Generate P1 & P3 (Hierarki)</button>
+            <button class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 transition text-sm">Generate P1 & P3 (Hierarki)</button>
         </form>
         <form method="POST" action="{{ route('assignments.generatePeers') }}" class="inline">
             @csrf
             <input type="hidden" name="period_id" value="{{ $selectedPeriodId }}">
-            <button class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 transition">Generate P2 (Rekan)</button>
+            <button class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 transition text-sm">Generate P2 (Rekan)</button>
         </form>
     </div>
 
@@ -79,6 +79,7 @@
 
     {{-- Assignments table --}}
     <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse text-sm">
             <thead>
                 <tr class="bg-gray-100 border-b border-slate-200 text-ink-muted">
@@ -113,6 +114,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
         <div class="px-4 py-3 border-t border-slate-200 bg-slate-50 text-right">
             {{ $assignments->links() }}
         </div>

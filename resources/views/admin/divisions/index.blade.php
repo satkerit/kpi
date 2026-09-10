@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
-<main class="flex-1 px-6 lg:px-10 py-8">
+<main class="flex-1 px-4 sm:px-6 lg:px-10 py-6 sm:py-8 w-full min-w-0">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
             <p class="text-[11px] font-bold tracking-[0.18em] text-gold-deep uppercase mb-1.5">Manajemen Admin</p>
             <h1 class="text-2xl font-extrabold text-ink tracking-tight">Manajemen Divisi</h1>
             <p class="text-sm text-ink-muted mt-1">Kelola divisi perusahaan lintas kantor beserta kepala divisinya.</p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             <a href="{{ route('admin.import.template', 'divisions') }}" class="inline-flex items-center gap-2 bg-white border border-slate-200 text-ink rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 transition shadow-card">
                 <svg class="w-4 h-4 text-navy" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 Template CSV

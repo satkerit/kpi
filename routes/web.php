@@ -21,6 +21,7 @@ use App\Http\Controllers\EvaluationResultController;
 use App\Http\Controllers\KpiCriteriaController;
 use App\Http\Controllers\KpiDashboardController;
 use App\Http\Controllers\KpiPeriodController;
+use App\Http\Controllers\KpiReportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -95,6 +96,8 @@ Route::middleware('kpi.employee')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/kpi', [KpiDashboardController::class, 'index'])->name('kpi.index');
+    Route::get('/kpi/report', [KpiReportController::class, 'index'])->name('kpi.report');
+    Route::post('/kpi/calculate-all', [EvaluationResultController::class, 'calculateAll'])->name('kpi.calculateAll');
     Route::get('/kpi/export-csv', [KpiDashboardController::class, 'exportCsv'])->name('kpi.exportCsv');
     Route::post('/kpi/calculate', [EvaluationResultController::class, 'store'])->name('kpi.calculate');
     Route::post('/assignments', [AssignmentController::class, 'assign'])->name('assignments.assign');

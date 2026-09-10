@@ -26,8 +26,8 @@
         };
     </script>
 </head>
-<body class="bg-paper font-sans text-ink antialiased min-h-screen flex items-center justify-center p-6">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
+<body class="bg-paper font-sans text-ink antialiased min-h-screen flex items-center justify-center p-4 sm:p-6">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 p-6 sm:p-8">
         <div class="flex items-center gap-3 mb-6">
             <div class="w-10 h-10 rounded-xl bg-navy-deep flex items-center justify-center font-extrabold text-gold text-sm">360</div>
             <div>

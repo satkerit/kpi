@@ -9,7 +9,7 @@
 @endphp
 
 @section('content')
-<main class="flex-1 px-6 lg:px-10 py-8">
+<main class="flex-1 px-4 sm:px-6 lg:px-10 py-6 sm:py-8 w-full min-w-0">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
             <p class="text-[11px] font-bold tracking-[0.18em] text-gold-deep uppercase mb-1.5">Master Data</p>

@@ -36,9 +36,18 @@
     </style>
 </head>
 <body class="bg-paper font-sans text-ink antialiased min-h-screen">
-<div class="flex min-h-screen">
-    {{-- ===== Sidebar ===== --}}
-    <aside class="hidden lg:flex flex-col w-64 shrink-0 bg-navy-deep text-white/90">
+<div class="min-h-screen lg:flex">
+    <div class="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-3 bg-navy-deep text-white px-4 py-3">
+        <div class="flex items-center gap-2 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-gold text-navy-deep font-extrabold grid place-items-center shrink-0">K</div>
+            <p class="text-sm font-bold truncate">KPI 360</p>
+        </div>
+        <button type="button" id="sidebarToggle" class="p-2 -mr-1 rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gold" aria-label="Buka menu navigasi">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+    </div>
+    <div id="sidebarOverlay" class="hidden fixed inset-0 z-30 bg-navy-deep/60 lg:hidden"></div>
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 hidden w-64 shrink-0 bg-navy-deep text-white/90 flex-col lg:static lg:flex">
         <div class="flex items-center gap-3 px-6 h-16 border-b border-white/10">
             <div class="w-9 h-9 rounded-lg bg-gold/90 flex items-center justify-center font-extrabold text-navy-deep text-sm tracking-tight">360</div>
             <div class="leading-tight">
@@ -53,6 +62,12 @@
                       {{ request()->routeIs('kpi.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13h6V3H3v10Zm0 8h6v-5H3v5Zm12 0h6V11h-6v10Zm0-18v5h6V3h-6Z"/></svg>
                 Dashboard Rekap
+            </a>
+            <a href="{{ route('kpi.report') }}"
+               class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
+                      {{ request()->routeIs('kpi.report') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3.75-12H18a2.25 2.25 0 0 1 2.25 2.25v11.25a2.25 2.25 0 0 1-2.25 2.25h-11.25A2.25 2.25 0 0 1 4.5 19.5V8.25A2.25 2.25 0 0 1 6.75 6h3.75c.621 0 1.125-.504 1.125-1.125V3.375C11.625 2.839 12.129 2.25 12.75 2.25h1.5c.621 0 1.125.589 1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
+                Laporan KPI
             </a>
             <a href="{{ route('assignments.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
@@ -172,5 +187,17 @@
         @yield('content')
     </div>
 </div>
+<script>
+(function () {
+    var btn = document.getElementById('sidebarToggle');
+    var bar = document.getElementById('sidebar');
+    var ov = document.getElementById('sidebarOverlay');
+    if (!btn || !bar) { return; }
+    function open() { bar.classList.remove('hidden'); bar.classList.add('flex'); if (ov) { ov.classList.remove('hidden'); } }
+    function close() { if (window.innerWidth < 1024) { bar.classList.add('hidden'); bar.classList.remove('flex'); if (ov) { ov.classList.add('hidden'); } } }
+    btn.addEventListener('click', function () { bar.classList.contains('hidden') ? open() : close(); });
+    if (ov) { ov.addEventListener('click', close); }
+})();
+</script>
 </body>
 </html>

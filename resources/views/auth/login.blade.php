@@ -70,7 +70,7 @@
     </section>
 
     {{-- ===== Panel Kanan: Form Login ===== --}}
-    <section class="flex items-center justify-center p-8 sm:p-12">
+    <section class="flex items-center justify-center p-4 sm:p-12">
         <div class="w-full max-w-sm">
             <div class="lg:hidden flex items-center gap-3 mb-10">
                 <div class="w-10 h-10 rounded-xl bg-navy-deep flex items-center justify-center font-extrabold text-gold text-sm">360</div>

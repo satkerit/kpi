@@ -18,7 +18,7 @@
 @endphp
 
 @section('content')
-<main class="flex-1 px-6 lg:px-10 py-8">
+<main class="flex-1 px-4 sm:px-6 lg:px-10 py-6 sm:py-8 w-full min-w-0">
     {{-- Header --}}
     <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>

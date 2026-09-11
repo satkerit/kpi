@@ -37,6 +37,33 @@ final class UserAccountController extends Controller
         ]);
     }
 
+    public function create(): View
+    {
+        return view('admin.users.form', [
+            'user' => new User,
+            'roles' => Role::orderBy('name')->get(['id', 'name', 'slug', 'description']),
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8'],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['string', 'exists:roles,slug'],
+        ]);
+
+        $data['password'] = bcrypt($data['password']);
+
+        $user = User::create($data);
+        $user->syncRoles($data['roles']);
+
+        return redirect()->route('admin.users.index')
+            ->with('success', 'Akun user baru berhasil ditambahkan.');
+    }
+
     public function edit(User $user): View
     {
         return view('admin.users.form', [

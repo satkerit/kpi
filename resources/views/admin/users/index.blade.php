@@ -8,6 +8,10 @@
             <h1 class="text-2xl font-extrabold text-ink tracking-tight">Manajemen User</h1>
             <p class="text-sm text-ink-muted mt-1">Kelola akun login user dan peran aksesnya.</p>
         </div>
+        <a href="{{ route('admin.users.create') }}" class="btn-action-primary">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            Tambah User Baru
+        </a>
     </div>
 
     {{-- Filter Form --}}

@@ -144,7 +144,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('positions', PositionController::class)->except(['show']);
 
         Route::resource('users', UserAccountController::class)
-            ->only(['index', 'edit', 'update', 'destroy']);
+            ->except(['show']);
 
         Route::resource('roles', RoleController::class)->except(['show']);
         Route::resource('permissions', PermissionController::class)->except(['show']);

@@ -7,16 +7,19 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
             Kembali ke Daftar User
         </a>
-        <h1 class="text-2xl font-extrabold text-ink tracking-tight">Edit Akun User</h1>
-        <p class="text-sm text-ink-muted mt-1">Kelola data akun login dan peran akses.</p>
+        <h1 class="text-2xl font-extrabold text-ink tracking-tight">{{ $user->exists ? 'Edit Akun User' : 'Tambah User Baru' }}</h1>
+        <p class="text-sm text-ink-muted mt-1">{{ $user->exists ? 'Kelola data akun login dan peran akses.' : 'Buat akun login baru untuk pengguna sistem.' }}</p>
     </div>
 
     <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
             <h2 class="text-sm font-bold text-ink uppercase tracking-wider">Formulir User</h2>
         </div>
-        <form method="POST" action="{{ route('admin.users.update', $user) }}" class="p-6 space-y-6">
-            @csrf @method('PUT')
+        <form method="POST" action="{{ $user->exists ? route('admin.users.update', $user) : route('admin.users.store') }}" class="p-6 space-y-6">
+            @csrf
+            @if($user->exists)
+                @method('PUT')
+            @endif
 
             <div>
                 <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Nama Lengkap <span class="text-rose-500">*</span></label>
@@ -31,9 +34,9 @@
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Password Baru (kosongkan jika tidak diubah)</label>
+                <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Password {{ $user->exists ? 'Baru (kosongkan jika tidak diubah)' : '' }} <span class="text-rose-500">*</span></label>
                 <input type="password" name="password" placeholder="Minimal 8 karakter"
-                    class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition">
+                    class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition" {{ $user->exists ? '' : 'required' }}>
             </div>
 
             <div>

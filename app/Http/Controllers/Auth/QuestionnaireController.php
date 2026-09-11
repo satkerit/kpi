@@ -70,9 +70,9 @@ final class QuestionnaireController extends Controller
 
         // Cooldown: cegah spam kirim ulang OTP.
         // OTP lama masih valid — arahkan langsung ke form verifikasi agar bisa digunakan.
-        $cooldownKey = 'questionnaire.otp.cooldown.'.$employee->nik;
+        $cooldownKey = 'questionnaire.otp.cooldown.' . $employee->nik;
         if (Cache::has($cooldownKey)) {
-            $ttl = (int) Cache::get($cooldownKey.'.ttl', self::RESEND_COOLDOWN);
+            $ttl = (int) Cache::get($cooldownKey . '.ttl', self::RESEND_COOLDOWN);
 
             return redirect()
                 ->route('questionnaire.verify.form')
@@ -92,20 +92,24 @@ final class QuestionnaireController extends Controller
 
         // Set cooldown — simpan TTL sisa agar bisa ditampilkan ke user.
         Cache::put($cooldownKey, true, self::RESEND_COOLDOWN);
-        Cache::put($cooldownKey.'.ttl', self::RESEND_COOLDOWN, self::RESEND_COOLDOWN);
+        Cache::put($cooldownKey . '.ttl', self::RESEND_COOLDOWN, self::RESEND_COOLDOWN);
 
-        MailSettingController::applyMailConfig();
+        // Di environment production: kirim OTP via email.
+        // Di development/local/testing: bypass pengiriman email, OTP langsung ditampilkan di layar.
+        $isProduction = app()->isProduction();
 
-        Mail::to($employee->email)->send(new OtpMail($otp, $employee->name));
-
-        // Di lingkungan non-produksi, tampilkan OTP agar mudah diuji (mailer log).
-        if (! app()->environment('production')) {
+        if ($isProduction) {
+            MailSettingController::applyMailConfig();
+            Mail::to($employee->email)->send(new OtpMail($otp, $employee->name));
+            $statusMessage = 'OTP telah dikirim ke email ' . maskEmail($employee->email) . '. Berlaku 10 menit.';
+        } else {
             session()->flash('dev_otp', $otp);
+            $statusMessage = '[Mode Dev] Email tidak dikirim. Silakan gunakan kode OTP yang tertera di bawah.';
         }
 
         return redirect()
             ->route('questionnaire.verify.form')
-            ->with('status', 'OTP telah dikirim ke email '.maskEmail($employee->email).'. Berlaku 10 menit.')
+            ->with('status', $statusMessage)
             ->with('otp_nik', $employee->nik);
     }
 

@@ -12,6 +12,11 @@ Thumbs.db
 .phpactor.json
 .phpunit.result.cache
 .phpunit.cache
+/.agents
+/.claude
+/.factory
+/.grok
+/.pi
 /coverage
 /.codex
 /.cursor/
@@ -64,11 +69,30 @@ service-account*.json
 # OpenMemory - IDE/Assistant specific rules
 CLAUDE.md
 AGENTS.md
+openmemory.md
+task.md
 
 .agents
+.agents/
 .claude
+.claude/
 .codex
+.codex/
 .factory
+.factory/
 .grok
+.grok/
 .pi
+.pi/
+.trae
+.trae/
+.ai
+.ai/
+.skills
+.skills/
+skills
+skills/
+**/skills/**
+**/skills
+.mcp.json
 docs

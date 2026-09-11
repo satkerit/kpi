@@ -207,7 +207,9 @@
             </div>
         </div>
         <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            @php($user = auth()->user())
             <span class="block px-3 pt-2 pb-1 text-[10px] font-bold tracking-widest text-white/30 uppercase">Penilaian</span>
+            @if($user?->hasPermission('kpi.view'))
             <a href="{{ route('kpi.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('kpi.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
@@ -220,13 +222,17 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3.75-12H18a2.25 2.25 0 0 1 2.25 2.25v11.25a2.25 2.25 0 0 1-2.25 2.25h-11.25A2.25 2.25 0 0 1 4.5 19.5V8.25A2.25 2.25 0 0 1 6.75 6h3.75c.621 0 1.125-.504 1.125-1.125V3.375C11.625 2.839 12.129 2.25 12.75 2.25h1.5c.621 0 1.125.589 1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
                 Laporan KPI
             </a>
+            @endif
+            @if($user?->hasPermission('assignments.manage'))
             <a href="{{ route('assignments.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('assignments.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-6-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>
                 Penugasan Penilai
             </a>
+            @endif
             <span class="block px-3 pt-4 pb-1 text-[10px] font-bold tracking-widest text-white/30 uppercase">Master Data</span>
+            @if($user?->hasPermission('kpi.manage'))
             <a href="{{ route('periods.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('periods.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
@@ -239,57 +245,78 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 8h6"/></svg>
                 Kriteria & Bobot
             </a>
-            @if(auth()->user()?->hasRole('super-admin', 'admin-hr'))
+            @endif
+            @if($user?->hasPermission('employees.view', 'users.view', 'offices.view', 'divisions.view', 'positions.view', 'settings.manage', 'roles.view', 'permissions.view'))
             <span class="block px-3 pt-4 pb-1 text-[10px] font-bold tracking-widest text-white/30 uppercase">Manajemen Admin</span>
+            @endif
+            @if($user?->hasPermission('employees.view'))
             <a href="{{ route('admin.employees.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('admin.employees.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 20h5l-1.4-4.5a2 2 0 0 0-1.9-1.5h-.4M15 20H9m6 0-1-5m-5 5H4l1.4-4.5a2 2 0 0 1 1.9-1.5h.4M9 20l1-5m4 0-1.5-.5a2 2 0 0 1-1-1.7V12a3 3 0 0 0 6 0v-.8a2 2 0 0 1 1-1.7L19 9m-9 1 1.5-.5a2 2 0 0 0 1-1.7V7a3 3 0 0 1-6 0v-.8a2 2 0 0 0-1-1.7L5 4"/></svg>
                 Manajemen Pegawai
             </a>
+            @endif
+            @if($user?->hasPermission('users.view'))
             <a href="{{ route('admin.users.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('admin.users.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
                 Manajemen User
             </a>
+            @endif
+            @if($user?->hasPermission('offices.view'))
             <a href="{{ route('admin.offices.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('admin.offices.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M4 18h5v-6H4v6Zm6 0h4V4h-4v14Zm5 0h5v-9h-5v9Z"/></svg>
                 Kantor
             </a>
+            @endif
+            @if($user?->hasPermission('divisions.view'))
             <a href="{{ route('admin.divisions.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('admin.divisions.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
                 Divisi
             </a>
+            @endif
+            @if($user?->hasPermission('positions.view'))
             <a href="{{ route('admin.positions.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('admin.positions.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6m-8 3h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>
                 Jabatan
             </a>
-            @if(Route::has('admin.system-settings.show'))
+            @endif
+            @if($user?->hasPermission('settings.manage'))
             <a href="{{ route('admin.system-settings.show') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('admin.system-settings.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 Setup Sistem
             </a>
-            @endif
             <a href="{{ route('admin.mail-settings.show') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('admin.mail-settings.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
                 Setup Email OTP
             </a>
+            @endif
+            @if($user?->hasPermission('roles.view', 'permissions.view'))
             <a href="{{ route('admin.roles.index') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
                       {{ request()->routeIs('admin.roles.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                 Role & Permission
+            </a>
+            @endif
+            @if($user?->hasPermission('permissions.view'))
+            <a href="{{ route('admin.permissions.index') }}"
+               class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
+                      {{ request()->routeIs('admin.permissions.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+                Manajemen Permission
             </a>
             @endif
         </nav>

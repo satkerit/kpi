@@ -94,14 +94,26 @@ Route::middleware('kpi.employee')->group(function () {
 */
 
 Route::middleware('auth')->group(function () {
-    Route::get('/kpi', [KpiDashboardController::class, 'index'])->name('kpi.index');
-    Route::get('/kpi/report', [KpiReportController::class, 'index'])->name('kpi.report');
-    Route::post('/kpi/calculate-all', [EvaluationResultController::class, 'calculateAll'])->name('kpi.calculateAll');
-    Route::get('/kpi/export-csv', [KpiDashboardController::class, 'exportCsv'])->name('kpi.exportCsv');
-    Route::post('/kpi/calculate', [EvaluationResultController::class, 'store'])->name('kpi.calculate');
-    Route::post('/assignments', [AssignmentManagementController::class, 'assign'])->name('assignments.assign');
+    Route::get('/kpi', [KpiDashboardController::class, 'index'])
+        ->middleware('permission:kpi.view')
+        ->name('kpi.index');
+    Route::get('/kpi/report', [KpiReportController::class, 'index'])
+        ->middleware('permission:kpi.view')
+        ->name('kpi.report');
+    Route::post('/kpi/calculate-all', [EvaluationResultController::class, 'calculateAll'])
+        ->middleware('permission:kpi.manage')
+        ->name('kpi.calculateAll');
+    Route::get('/kpi/export-csv', [KpiDashboardController::class, 'exportCsv'])
+        ->middleware('permission:kpi.view')
+        ->name('kpi.exportCsv');
+    Route::post('/kpi/calculate', [EvaluationResultController::class, 'store'])
+        ->middleware('permission:kpi.evaluate')
+        ->name('kpi.calculate');
+    Route::post('/assignments', [AssignmentManagementController::class, 'assign'])
+        ->middleware('permission:assignments.manage')
+        ->name('assignments.assign');
 
-    Route::prefix('periods')->name('periods.')->group(function () {
+    Route::prefix('periods')->name('periods.')->middleware('permission:kpi.manage')->group(function () {
         Route::get('/', [KpiPeriodController::class, 'index'])->name('index');
         Route::get('/create', [KpiPeriodController::class, 'create'])->name('create');
         Route::post('/', [KpiPeriodController::class, 'store'])->name('store');
@@ -110,7 +122,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{period}', [KpiPeriodController::class, 'destroy'])->whereNumber('period')->name('destroy');
     });
 
-    Route::prefix('criteria')->name('criteria.')->group(function () {
+    Route::prefix('criteria')->name('criteria.')->middleware('permission:kpi.manage')->group(function () {
         Route::get('/', [KpiCriteriaController::class, 'index'])->name('index');
         Route::post('/', [KpiCriteriaController::class, 'storeCriteria'])->name('store');
         Route::put('/{criterion}', [KpiCriteriaController::class, 'updateCriteria'])->whereNumber('criterion')->name('update');
@@ -121,7 +133,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/subcriteria/{subcriteria}', [KpiCriteriaController::class, 'destroySubcriteria'])->whereNumber('subcriteria')->name('subcriteria.destroy');
     });
 
-    Route::prefix('assignments')->name('assignments.')->group(function () {
+    Route::prefix('assignments')->name('assignments.')->middleware('permission:assignments.manage')->group(function () {
         Route::get('/', [AssignmentManagementController::class, 'index'])->name('index');
         Route::post('/generate', [AssignmentManagementController::class, 'generate'])->name('generate');
         Route::post('/generate-peers', [AssignmentManagementController::class, 'generatePeers'])->name('generatePeers');
@@ -131,42 +143,89 @@ Route::middleware('auth')->group(function () {
     /*
     |-----------------------------------------------------------------------
     | Admin: Manajemen Pegawai, User, Role & Permission
+    | Prioritas mengikuti gate `permission:*` yang di-set lewat UI role.
+    | Menambah/melepas permission di module "Role" langsung mengubah akses.
     |-----------------------------------------------------------------------
     */
 
-    Route::prefix('admin')->name('admin.')->middleware('role:super-admin,admin-hr')->group(function () {
+    Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('employees', EmployeeAdminController::class)
             ->parameters(['employees' => 'employee'])
-            ->except(['show']);
+            ->except(['show'])
+            ->middleware('permission:employees.view');
 
-        Route::resource('offices', OfficeController::class)->except(['show']);
-        Route::resource('divisions', DivisionController::class)->except(['show']);
-        Route::resource('positions', PositionController::class)->except(['show']);
+        Route::resource('offices', OfficeController::class)
+            ->except(['show'])
+            ->middleware('permission:offices.view');
+
+        Route::resource('divisions', DivisionController::class)
+            ->except(['show'])
+            ->middleware('permission:divisions.view');
+
+        Route::resource('positions', PositionController::class)
+            ->except(['show'])
+            ->middleware('permission:positions.view');
 
         Route::resource('users', UserAccountController::class)
-            ->except(['show']);
+            ->except(['show'])
+            ->middleware('permission:users.view');
 
-        Route::resource('roles', RoleController::class)->except(['show']);
-        Route::resource('permissions', PermissionController::class)->except(['show']);
+        Route::resource('roles', RoleController::class)
+            ->except(['show'])
+            ->middleware('permission:roles.view');
+
+        Route::resource('permissions', PermissionController::class)
+            ->except(['show'])
+            ->middleware('permission:permissions.view');
 
         // Konfigurasi Pengaturan Sistem (System Setup)
-        Route::get('system-settings', [SystemSettingController::class, 'show'])->name('system-settings.show');
-        Route::post('system-settings', [SystemSettingController::class, 'save'])->name('system-settings.save');
+        Route::get('system-settings', [SystemSettingController::class, 'show'])
+            ->middleware('permission:settings.manage')
+            ->name('system-settings.show');
+        Route::post('system-settings', [SystemSettingController::class, 'save'])
+            ->middleware('permission:settings.manage')
+            ->name('system-settings.save');
 
         // Konfigurasi email pengirim OTP (SMTP Gmail)
-        Route::get('mail-settings', [MailSettingController::class, 'show'])->name('mail-settings.show');
-        Route::post('mail-settings', [MailSettingController::class, 'save'])->name('mail-settings.save');
-        Route::post('mail-settings/test', [MailSettingController::class, 'test'])->name('mail-settings.test');
+        Route::get('mail-settings', [MailSettingController::class, 'show'])
+            ->middleware('permission:settings.manage')
+            ->name('mail-settings.show');
+        Route::post('mail-settings', [MailSettingController::class, 'save'])
+            ->middleware('permission:settings.manage')
+            ->name('mail-settings.save');
+        Route::post('mail-settings/test', [MailSettingController::class, 'test'])
+            ->middleware('permission:settings.manage')
+            ->name('mail-settings.test');
 
         // Konfigurasi bobot & skala per periode
-        Route::get('periods/{period}/config', [PeriodConfigController::class, 'show'])->name('periods.config');
-        Route::post('periods/{period}/config/weights', [PeriodConfigController::class, 'saveWeights'])->name('periods.config.weights');
-        Route::post('periods/{period}/config/scales', [PeriodConfigController::class, 'saveScales'])->name('periods.config.scales');
-        Route::delete('periods/{period}/config/scales/{scale}', [PeriodConfigController::class, 'destroyScale'])->name('periods.config.scales.destroy');
-        Route::post('periods/{period}/config/settings', [PeriodConfigController::class, 'saveSettings'])->name('periods.config.settings');
+        Route::get('periods/{period}/config', [PeriodConfigController::class, 'show'])
+            ->middleware('permission:kpi.manage')
+            ->whereNumber('period')
+            ->name('periods.config');
+        Route::post('periods/{period}/config/weights', [PeriodConfigController::class, 'saveWeights'])
+            ->middleware('permission:kpi.manage')
+            ->whereNumber('period')
+            ->name('periods.config.weights');
+        Route::post('periods/{period}/config/scales', [PeriodConfigController::class, 'saveScales'])
+            ->middleware('permission:kpi.manage')
+            ->whereNumber('period')
+            ->name('periods.config.scales');
+        Route::delete('periods/{period}/config/scales/{scale}', [PeriodConfigController::class, 'destroyScale'])
+            ->middleware('permission:kpi.manage')
+            ->whereNumber('period')
+            ->whereNumber('scale')
+            ->name('periods.config.scales.destroy');
+        Route::post('periods/{period}/config/settings', [PeriodConfigController::class, 'saveSettings'])
+            ->middleware('permission:kpi.manage')
+            ->whereNumber('period')
+            ->name('periods.config.settings');
 
         // Template and Import Routes
-        Route::get('import/template/{type}', [ImportExportController::class, 'template'])->name('import.template');
-        Route::post('import/{type}', [ImportExportController::class, 'import'])->name('import.store');
+        Route::get('import/template/{type}', [ImportExportController::class, 'template'])
+            ->middleware('permission:employees.edit,offices.manage')
+            ->name('import.template');
+        Route::post('import/{type}', [ImportExportController::class, 'import'])
+            ->middleware('permission:employees.edit,offices.manage')
+            ->name('import.store');
     });
 });

@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Cache;
 
 trait HasRoles
 {
+    /** Stamp versi cache RBAC global. */
+    private const VERSION_KEY = 'rbac.version';
+
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_role', 'user_id', 'role_id');
@@ -30,9 +33,9 @@ trait HasRoles
     }
 
     /**
-     * Cek permission via role, dengan cache per-user.
+     * Cek permission via role — user lolos jika memegang salah satu slug yang diminta.
      */
-    public function hasPermission(string $slug): bool
+    public function hasPermission(string ...$slugs): bool
     {
         if (in_array('super-admin', $this->getRoleSlugs(), true)) {
             return true;
@@ -40,7 +43,7 @@ trait HasRoles
 
         $permissionSlugs = $this->getPermissionSlugs();
 
-        return in_array($slug, $permissionSlugs, true);
+        return count(array_intersect($slugs, $permissionSlugs)) > 0;
     }
 
     /**
@@ -49,7 +52,7 @@ trait HasRoles
     public function getRoleSlugs(): array
     {
         return Cache::remember(
-            "rbac.user.{$this->id}.roles",
+            self::cacheKey($this->id, 'roles'),
             now()->addMinutes(30),
             fn () => $this->roles()->pluck('slug')->all(),
         );
@@ -61,7 +64,7 @@ trait HasRoles
     public function getPermissionSlugs(): array
     {
         return Cache::remember(
-            "rbac.user.{$this->id}.permissions",
+            self::cacheKey($this->id, 'permissions'),
             now()->addMinutes(30),
             function () {
                 return $this->roles()
@@ -73,6 +76,20 @@ trait HasRoles
                     ->all();
             },
         );
+    }
+
+    /**
+     * Stamp global: naikkan versi untuk mem-invalidasi seluruh cache RBAC sekaligus.
+     */
+    public static function bumpRbacVersion(): void
+    {
+        Cache::add(self::VERSION_KEY, 1, now()->addYears(10));
+        Cache::increment(self::VERSION_KEY);
+    }
+
+    private static function cacheKey(int $userId, string $suffix): string
+    {
+        return sprintf('rbac.v%s.user.%d.%s', Cache::get(self::VERSION_KEY, 0), $userId, $suffix);
     }
 
     /**
@@ -109,8 +126,8 @@ trait HasRoles
 
     public function clearRbacCache(): void
     {
-        Cache::forget("rbac.user.{$this->id}.roles");
-        Cache::forget("rbac.user.{$this->id}.permissions");
+        Cache::forget(self::cacheKey($this->id, 'roles'));
+        Cache::forget(self::cacheKey($this->id, 'permissions'));
     }
 
     /**

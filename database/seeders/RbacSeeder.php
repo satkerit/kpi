@@ -55,6 +55,12 @@ class RbacSeeder extends Seeder
             'kpi.evaluate' => 'Isi Evaluasi',
             'kpi.manage' => 'Kelola Periode & Kriteria',
         ],
+        'assignments' => [
+            'assignments.manage' => 'Kelola Penugasan Evaluasi',
+        ],
+        'settings' => [
+            'settings.manage' => 'Kelola Pengaturan Sistem',
+        ],
     ];
 
     /**
@@ -98,6 +104,8 @@ class RbacSeeder extends Seeder
             'positions.manage',
             'kpi.view',
             'kpi.manage',
+            'assignments.manage',
+            'settings.manage',
         ]);
 
         // Role Evaluator — hanya mengisi evaluasi
@@ -115,5 +123,7 @@ class RbacSeeder extends Seeder
         // Pastikan admin default memegang role super-admin
         $admin = User::where('email', 'admin@kpi360.co.id')->first();
         $admin?->assignRole('super-admin');
+
+        User::bumpRbacVersion();
     }
 }

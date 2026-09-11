@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\AccessControl\Middleware\CheckPermission;
 use App\Domains\AccessControl\Middleware\CheckRole;
 use App\Domains\AccessControl\Middleware\ResolveKpiEmployee;
 use Illuminate\Foundation\Application;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => CheckRole::class,
+            'permission' => CheckPermission::class,
             'kpi.employee' => ResolveKpiEmployee::class,
         ]);
     })

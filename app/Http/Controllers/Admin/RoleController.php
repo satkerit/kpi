@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Domains\AccessControl\Models\Permission;
 use App\Domains\AccessControl\Models\Role;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -42,6 +43,7 @@ final class RoleController extends Controller
 
         $role = Role::create(collect($data)->except('permissions')->all());
         $role->permissions()->sync($data['permissions'] ?? []);
+        User::bumpRbacVersion();
 
         return redirect()->route('admin.roles.index')
             ->with('success', 'Role berhasil ditambahkan.');
@@ -57,11 +59,6 @@ final class RoleController extends Controller
 
     public function update(Request $request, Role $role): RedirectResponse
     {
-        if ($role->is_system) {
-            return redirect()->route('admin.roles.index')
-                ->with('error', 'Role sistem tidak dapat diubah.');
-        }
-
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:roles,name,'.$role->id],
             'slug' => ['required', 'string', 'max:255', 'unique:roles,slug,'.$role->id, 'alpha_dash'],
@@ -70,8 +67,15 @@ final class RoleController extends Controller
             'permissions.*' => ['integer', 'exists:permissions,id'],
         ]);
 
-        $role->update(collect($data)->except('permissions')->all());
+        // Role sistem: nama & slug terkunci, description + permission tetap dapat diubah.
+        if (! $role->is_system) {
+            $role->update(collect($data)->except('permissions')->all());
+        } else {
+            $role->update(['description' => $data['description'] ?? $role->description]);
+        }
+
         $role->permissions()->sync($data['permissions'] ?? []);
+        User::bumpRbacVersion();
 
         return redirect()->route('admin.roles.index')
             ->with('success', 'Role berhasil diperbarui.');

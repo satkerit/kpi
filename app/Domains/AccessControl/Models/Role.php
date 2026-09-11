@@ -26,6 +26,12 @@ class Role extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(fn () => User::bumpRbacVersion());
+        static::deleted(fn () => User::bumpRbacVersion());
+    }
+
     public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'role_permission');

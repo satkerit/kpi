@@ -10,15 +10,26 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('evaluation_rules', function (Blueprint $table) {
-            $table->dropForeign(['scope_department_id']);
-            $table->dropColumn('scope_department_id');
-        });
+        if (Schema::hasColumn('evaluation_rules', 'scope_department_id')) {
+            Schema::table('evaluation_rules', function (Blueprint $table) {
+                $table->dropForeign(['scope_department_id']);
+                $table->dropColumn('scope_department_id');
+            });
+        }
 
-        Schema::table('employees', function (Blueprint $table) {
-            $table->dropForeign(['department_id']);
-            $table->dropColumn('department_id');
-        });
+        if (Schema::hasColumn('employees', 'department_id')) {
+            Schema::table('employees', function (Blueprint $table) {
+                $table->dropForeign(['department_id']);
+                $table->dropColumn('department_id');
+            });
+        }
+
+        if (Schema::hasColumn('users', 'department_id')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropForeign(['department_id']);
+                $table->dropColumn('department_id');
+            });
+        }
 
         Schema::dropIfExists('departments');
     }

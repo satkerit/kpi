@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             RbacSeeder::class,
             DefaultPeriodConfigSeeder::class,
             MailSettingSeeder::class,
+            SystemSettingSeeder::class,
         ]);
     }
 }

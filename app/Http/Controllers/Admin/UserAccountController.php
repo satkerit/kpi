@@ -18,9 +18,11 @@ final class UserAccountController extends Controller
         $users = User::query()
             ->with('roles:id,name,slug')
             ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->string('search');
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+                $search = (string) $request->string('search');
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
             })
             ->when($request->filled('role'), function ($q) use ($request) {
                 $q->whereHas('roles', fn ($r) => $r->where('slug', $request->string('role')));

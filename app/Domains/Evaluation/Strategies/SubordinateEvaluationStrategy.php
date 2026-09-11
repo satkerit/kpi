@@ -38,19 +38,18 @@ final class SubordinateEvaluationStrategy implements EvaluatorStrategyInterface
     }
 
     /**
-     * P3: Bawahan langsung (tepat 1 tingkat vertikal ke bawah).
+     * P3: Bawahan menilai atasan — evaluator harus menunjuk evaluatee
+     * sebagai atasan langsung ATAU manajer (cukup salah satu, 1x penilaian).
      */
     public function validateRelationship(int $evaluatorId, int $evaluateeId): bool
     {
-        $evaluator = Employee::query()->with('position')->find($evaluatorId);
-        $evaluatee = Employee::query()->with('position')->find($evaluateeId);
+        $evaluator = Employee::query()->find($evaluatorId);
 
-        if (! $evaluator || ! $evaluatee || ! $evaluator->position || ! $evaluatee->position) {
+        if ($evaluator === null) {
             return false;
         }
 
-        // Evaluator level + 1 dibanding atasan yang dinilai
-        return (int) $evaluator->position->level === ((int) $evaluatee->position->level + 1)
-            || (int) $evaluator->direct_supervisor_id === $evaluateeId;
+        return (int) $evaluator->direct_supervisor_id === $evaluateeId
+            || (int) $evaluator->manager_id === $evaluateeId;
     }
 }

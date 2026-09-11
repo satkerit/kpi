@@ -44,4 +44,9 @@ class KpiAssignment extends Model
     {
         return $this->hasMany(KpiScore::class, 'assignment_id');
     }
+
+    public function getFormKeyAttribute(): string
+    {
+        return $this->exists ? (string) $this->id : "target_{$this->evaluatee_id}";
+    }
 }

@@ -28,8 +28,9 @@
                 </select>
             </div>
             <div class="flex items-end">
-                <button type="submit" class="w-full px-4 py-2.5 bg-navy text-white rounded-xl text-sm font-semibold hover:bg-navy-deep transition">
-                    Filter
+                <button type="submit" class="w-full btn-action-primary">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                    Filter Data
                 </button>
             </div>
         </form>
@@ -62,11 +63,17 @@
                                     <span class="text-ink-muted text-[11px]">—</span>
                                 @endif
                             </td>
-                            <td class="px-5 py-3.5 text-right space-x-2">
-                                <a href="{{ route('admin.users.edit', $user) }}" class="text-xs font-semibold text-navy hover:underline">Edit</a>
+                            <td class="px-5 py-3.5 text-right space-x-1.5">
+                                <a href="{{ route('admin.users.edit', $user) }}" class="btn-table-edit">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    Edit
+                                </a>
                                 <form method="POST" action="{{ route('admin.users.destroy', $user) }}" class="inline" onsubmit="return confirm('Hapus akun user ini?')">
                                     @csrf @method('DELETE')
-                                    <button class="text-xs font-semibold text-rose-600 hover:underline">Hapus</button>
+                                    <button class="btn-table-delete">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        Hapus
+                                    </button>
                                 </form>
                             </td>
                         </tr>

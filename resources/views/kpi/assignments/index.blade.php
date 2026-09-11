@@ -18,7 +18,7 @@
     <div class="flex flex-wrap gap-3 mb-6 items-center">
         <form method="GET" class="flex items-center gap-2">
             <label class="text-sm font-medium text-ink-soft">Periode</label>
-            <select name="period_id" class="border rounded px-3 py-2" onchange="this.form.submit()">
+            <select name="period_id" class="border rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-navy" onchange="this.form.submit()">
                 @foreach($periods as $p)
                     <option value="{{ $p->id }}" @selected($selectedPeriodId == $p->id)>{{ $p->name }}</option>
                 @endforeach
@@ -27,12 +27,18 @@
         <form method="POST" action="{{ route('assignments.generate') }}" class="inline">
             @csrf
             <input type="hidden" name="period_id" value="{{ $selectedPeriodId }}">
-            <button class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 transition text-sm">Generate P1 & P3 (Hierarki)</button>
+            <button class="btn-action-primary text-xs">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                Generate P1 & P3 (Hierarki)
+            </button>
         </form>
         <form method="POST" action="{{ route('assignments.generatePeers') }}" class="inline">
             @csrf
             <input type="hidden" name="period_id" value="{{ $selectedPeriodId }}">
-            <button class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 transition text-sm">Generate P2 (Rekan)</button>
+            <button class="btn-action-gold text-xs">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                Generate P2 (Rekan)
+            </button>
         </form>
     </div>
 
@@ -70,7 +76,7 @@
                 </select>
             </div>
             <div class="md:col-span-2">
-                <button type="submit" class="w-full py-2 bg-navy text-white text-sm font-bold rounded-xl shadow hover:bg-navy-deep transition">
+                <button type="submit" class="w-full btn-action-primary py-2 text-xs">
                     Simpan Penugasan
                 </button>
             </div>
@@ -97,12 +103,14 @@
                         <td class="px-4 py-2">{{ $a->evaluator->name ?? $a->evaluator_id }}</td>
                         <td class="px-4 py-2 text-center">{{ $a->evaluator_type }}</td>
                         <td class="px-4 py-2 text-center">{{ $a->status }}</td>
-                        <td class="px-4 py-2 text-center">
-                            <a href="{{ route('evaluations.form', $a) }}" class="text-blue-600 font-medium hover:underline">Form</a>
+                        <td class="px-4 py-2 text-center space-x-1.5">
+                            <a href="{{ route('evaluations.form', $a) }}" class="btn-table-edit">
+                                Form
+                            </a>
                             @if($a->status === 'pending')
                                 <form method="POST" action="{{ route('assignments.destroy', $a) }}" class="inline" onsubmit="return confirm('Hapus penugasan?')">
                                     @csrf @method('DELETE')
-                                    <button class="text-red-600 text-sm font-medium ml-2 hover:underline">Hapus</button>
+                                    <button class="btn-table-delete">Hapus</button>
                                 </form>
                             @endif
                         </td>

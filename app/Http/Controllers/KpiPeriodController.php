@@ -63,11 +63,11 @@ final class KpiPeriodController extends Controller
     private function rules(): array
     {
         return [
-            'name'       => ['required', 'string', 'max:100'],
-            'year'       => ['required', 'integer', 'min:2000', 'max:2100'],
+            'name' => ['required', 'string', 'max:100'],
+            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'start_date' => ['required', 'date'],
-            'end_date'   => ['required', 'date', 'after_or_equal:start_date'],
-            'status'     => ['required', 'in:draft,active,closed'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'status' => ['required', 'in:draft,active,closed'],
         ];
     }
 }

@@ -38,7 +38,7 @@ final class PeerEvaluationStrategy implements EvaluatorStrategyInterface
     }
 
     /**
-     * P2: Rekan Sejawat (level jabatan setara, lintas/sama divisi & kantor, bukan orang yang sama).
+     * P2: Rekan Sejawat — memiliki atasan langsung yang sama, bukan orang yang sama.
      */
     public function validateRelationship(int $evaluatorId, int $evaluateeId): bool
     {
@@ -46,14 +46,10 @@ final class PeerEvaluationStrategy implements EvaluatorStrategyInterface
             return false;
         }
 
-        $evaluator = Employee::query()->with('position')->find($evaluatorId);
-        $evaluatee = Employee::query()->with('position')->find($evaluateeId);
+        $evaluator = Employee::query()->find($evaluatorId);
 
-        if (! $evaluator || ! $evaluatee || ! $evaluator->position || ! $evaluatee->position) {
-            return false;
-        }
-
-        // Posisi tingkat setara
-        return (int) $evaluator->position->level === (int) $evaluatee->position->level;
+        return $evaluator !== null
+            && $evaluator->direct_supervisor_id !== null
+            && (int) $evaluator->direct_supervisor_id === (int) Employee::query()->find($evaluateeId)?->direct_supervisor_id;
     }
 }

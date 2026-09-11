@@ -21,8 +21,9 @@ return new class extends Migration
         DB::statement('UPDATE divisions SET head_id = NULL');
         DB::statement('UPDATE departments SET head_id = NULL');
 
-        // divisions: FK constraint sudah tidak ada (hanya index), langsung tambah FK baru ke employees
+        // divisions: drop FK lama ke users, tambah FK baru ke employees
         Schema::table('divisions', function (Blueprint $table) {
+            $table->dropForeign(['head_id']);
             $table->foreign('head_id')->references('id')->on('employees')->nullOnDelete();
         });
 

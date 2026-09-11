@@ -9,15 +9,15 @@
             <p class="text-sm text-ink-muted mt-1">Kelola daftar kantor dan cabang perusahaan sebagai basis penempatan pegawai.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-            <a href="{{ route('admin.import.template', 'offices') }}" class="inline-flex items-center gap-2 bg-white border border-slate-200 text-ink rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 transition shadow-card">
+            <a href="{{ route('admin.import.template', 'offices') }}" class="btn-action-secondary">
                 <svg class="w-4 h-4 text-navy" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 Template CSV
             </a>
-            <button onclick="document.getElementById('importModal').classList.remove('hidden')" class="inline-flex items-center gap-2 bg-emerald-600 text-white rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-emerald-700 transition shadow-card">
+            <button onclick="document.getElementById('importModal').classList.remove('hidden')" class="btn-action-success">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
                 Upload CSV
             </button>
-            <a href="{{ route('admin.offices.create') }}" class="inline-flex items-center gap-2 bg-navy text-white rounded-xl px-5 py-2.5 text-sm font-semibold hover:bg-navy-deep transition shadow-card">
+            <a href="{{ route('admin.offices.create') }}" class="btn-action-primary">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
                 Tambah Kantor
             </a>

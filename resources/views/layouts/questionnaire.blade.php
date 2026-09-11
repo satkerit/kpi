@@ -16,10 +16,10 @@
                         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
                     },
                     colors: {
-                        ink: { DEFAULT: '#16233a', soft: '#3d4c63', muted: '#7c8aa0' },
-                        navy: { DEFAULT: '#16324f', deep: '#0f2438', tint: '#eef3f8' },
-                        gold: { DEFAULT: '#b98e1f', soft: '#f6ecd4', deep: '#8a6a12' },
-                        paper: '#f6f7f9',
+                        ink: { DEFAULT: '#1e293b', soft: '#475569', muted: '#94a3b8' },
+                        navy: { DEFAULT: '#1e3a8a', deep: '#0f172a', tint: '#f1f5f9' },
+                        gold: { DEFAULT: '#d97706', soft: '#fef3c7', deep: '#92400e' },
+                        paper: '#f8fafc',
                     },
                     boxShadow: {
                         card: '0 1px 2px rgba(22,35,58,.06), 0 4px 16px rgba(22,35,58,.06)',
@@ -38,10 +38,16 @@
     <header class="bg-navy-deep text-white sticky top-0 z-30 shadow-lg">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-10 h-10 rounded-xl bg-gold flex items-center justify-center font-extrabold text-navy-deep text-sm shrink-0">360</div>
+                @if($appLogo = \App\Models\AppSetting::get('app_logo'))
+                    <img src="{{ Storage::url($appLogo) }}" alt="Logo" class="w-10 h-10 rounded-xl object-contain bg-white/10 p-1 shrink-0">
+                @else
+                    <div class="w-10 h-10 rounded-xl bg-gold flex items-center justify-center font-extrabold text-navy-deep text-sm shrink-0">
+                        {{ strtoupper(mb_substr(\App\Models\AppSetting::get('app_name', 'KPI 360'), 0, 3)) }}
+                    </div>
+                @endif
                 <div class="min-w-0">
-                    <p class="font-bold text-sm sm:text-base truncate">Kuesioner KPI 360°</p>
-                    <p class="text-[11px] sm:text-xs text-white/60 truncate">@yield('period_label', 'Penilaian Kinerja')</p>
+                    <p class="font-bold text-sm sm:text-base truncate">{{ \App\Models\AppSetting::get('app_name', 'Kuesioner KPI 360°') }}</p>
+                    <p class="text-[11px] sm:text-xs text-white/60 truncate">@yield('period_label', \App\Models\AppSetting::get('app_slogan', 'Penilaian Kinerja'))</p>
                 </div>
             </div>
             @hasSection('evaluator')

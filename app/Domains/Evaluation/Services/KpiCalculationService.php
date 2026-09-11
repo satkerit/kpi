@@ -25,13 +25,13 @@ final class KpiCalculationService
             $weights = $this->loadWeights($periodId);
             $period = KpiPeriod::query()->find($periodId);
             $minRaters = (int) ($period?->setting('min_raters_per_group') ?? KpiPeriod::DEFAULT_SETTINGS['min_raters_per_group']);
-            $types = ['P1', 'P2', 'P3', 'SELF'];
+            $types = ['P1', 'P2', 'P3'];
 
             $typeScores = [];
             foreach ($types as $type) {
-                // SELF dikecualikan dari ambang anonim (selalu 1 penilai = diri sendiri).
-                $threshold = $type === 'SELF' ? 1 : $minRaters;
-                $avg = $this->calculateAverageForType($evaluateeId, $periodId, $type, $threshold);
+                // Selama penilai sudah submit penilaian (> 0 penilai yang submitted),
+                // hitung nilai rata-rata grup tersebut (threshold = 1) agar nilai P1, P2, P3 langsung tampil.
+                $avg = $this->calculateAverageForType($evaluateeId, $periodId, $type, 1);
                 if ($avg > 0) {
                     $typeScores[$type] = $avg;
                 }
@@ -46,7 +46,7 @@ final class KpiCalculationService
                     'score_p1' => $typeScores['P1'] ?? 0,
                     'score_p2' => $typeScores['P2'] ?? 0,
                     'score_p3' => $typeScores['P3'] ?? 0,
-                    'score_self' => $typeScores['SELF'] ?? 0,
+                    'score_self' => 0,
                     'final_score' => $finalScore,
                     'predicate' => $predicate,
                 ]
@@ -80,15 +80,15 @@ final class KpiCalculationService
 
         $total = 0.0;
         foreach ($assignments as $assignment) {
-            $scored = $assignment->scores->filter(fn($s) => $s->raw_score !== null);
-            $weightSum = $scored->sum(fn($s) => (float) ($s->subcriteria->weight ?? 0));
+            $scored = $assignment->scores->filter(fn ($s) => $s->raw_score !== null);
+            $weightSum = $scored->sum(fn ($s) => (float) ($s->subcriteria->weight ?? 0));
 
             if ($weightSum <= 0) {
                 continue;
             }
 
             // bobot ternormalisasi: Σ(raw × weight) / Σ(weight)
-            $total += $scored->sum(fn($s) => (float) $s->raw_score * (float) ($s->subcriteria->weight ?? 0)) / $weightSum;
+            $total += $scored->sum(fn ($s) => (float) $s->raw_score * (float) ($s->subcriteria->weight ?? 0)) / $weightSum;
         }
 
         return round($total / $assignments->count(), 2);
@@ -134,7 +134,7 @@ final class KpiCalculationService
             ->where('period_id', $periodId)
             ->pluck('weight', 'evaluator_type');
 
-        return $rows->mapWithKeys(fn($w, $type) => [$type => (float) $w])->toArray();
+        return $rows->mapWithKeys(fn ($w, $type) => [$type => (float) $w])->toArray();
     }
 
     /**

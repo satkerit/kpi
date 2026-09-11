@@ -64,3 +64,11 @@ service-account*.json
 # OpenMemory - IDE/Assistant specific rules
 CLAUDE.md
 AGENTS.md
+
+.agents
+.claude
+.codex
+.factory
+.grok
+.pi
+docs

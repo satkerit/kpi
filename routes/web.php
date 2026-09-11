@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\EmployeeAdminController;
-use App\Http\Controllers\Admin\EvaluationRuleController;
 use App\Http\Controllers\Admin\ImportExportController;
 use App\Http\Controllers\Admin\MailSettingController;
 use App\Http\Controllers\Admin\OfficeController;
@@ -10,8 +9,8 @@ use App\Http\Controllers\Admin\PeriodConfigController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\PositionController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SystemSettingController;
 use App\Http\Controllers\Admin\UserAccountController;
-use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\AssignmentManagementController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\QuestionnaireController;
@@ -100,7 +99,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/kpi/calculate-all', [EvaluationResultController::class, 'calculateAll'])->name('kpi.calculateAll');
     Route::get('/kpi/export-csv', [KpiDashboardController::class, 'exportCsv'])->name('kpi.exportCsv');
     Route::post('/kpi/calculate', [EvaluationResultController::class, 'store'])->name('kpi.calculate');
-    Route::post('/assignments', [AssignmentController::class, 'assign'])->name('assignments.assign');
+    Route::post('/assignments', [AssignmentManagementController::class, 'assign'])->name('assignments.assign');
 
     Route::prefix('periods')->name('periods.')->group(function () {
         Route::get('/', [KpiPeriodController::class, 'index'])->name('index');
@@ -113,6 +112,10 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('criteria')->name('criteria.')->group(function () {
         Route::get('/', [KpiCriteriaController::class, 'index'])->name('index');
+        Route::post('/', [KpiCriteriaController::class, 'storeCriteria'])->name('store');
+        Route::put('/{criterion}', [KpiCriteriaController::class, 'updateCriteria'])->whereNumber('criterion')->name('update');
+        Route::delete('/{criterion}', [KpiCriteriaController::class, 'destroyCriteria'])->whereNumber('criterion')->name('destroy');
+
         Route::post('/subcriteria', [KpiCriteriaController::class, 'storeSubcriteria'])->name('subcriteria.store');
         Route::put('/subcriteria/{subcriteria}', [KpiCriteriaController::class, 'updateSubcriteria'])->whereNumber('subcriteria')->name('subcriteria.update');
         Route::delete('/subcriteria/{subcriteria}', [KpiCriteriaController::class, 'destroySubcriteria'])->whereNumber('subcriteria')->name('subcriteria.destroy');
@@ -146,8 +149,9 @@ Route::middleware('auth')->group(function () {
         Route::resource('roles', RoleController::class)->except(['show']);
         Route::resource('permissions', PermissionController::class)->except(['show']);
 
-        Route::resource('evaluation-rules', EvaluationRuleController::class)->except(['show']);
-        Route::post('evaluation-rules/generate', [EvaluationRuleController::class, 'generate'])->name('evaluation-rules.generate');
+        // Konfigurasi Pengaturan Sistem (System Setup)
+        Route::get('system-settings', [SystemSettingController::class, 'show'])->name('system-settings.show');
+        Route::post('system-settings', [SystemSettingController::class, 'save'])->name('system-settings.save');
 
         // Konfigurasi email pengirim OTP (SMTP Gmail)
         Route::get('mail-settings', [MailSettingController::class, 'show'])->name('mail-settings.show');

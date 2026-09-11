@@ -65,6 +65,12 @@ class Employee extends Model
         return $this->belongsTo(Employee::class, 'direct_supervisor_id');
     }
 
+    /** Alias untuk supervisor / atasan langsung. */
+    public function directSupervisor(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'direct_supervisor_id');
+    }
+
     /** Manajer struktural (di atas atasan langsung). */
     public function manager(): BelongsTo
     {

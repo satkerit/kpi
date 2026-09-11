@@ -38,19 +38,13 @@ final class SuperiorEvaluationStrategy implements EvaluatorStrategyInterface
     }
 
     /**
-     * P1: Atasan langsung (tepat 1 tingkat vertikal ke atas).
+     * P1: Atasan menilai bawahan — evaluatee harus ber-atasan langsung ke evaluator.
      */
     public function validateRelationship(int $evaluatorId, int $evaluateeId): bool
     {
-        $evaluator = Employee::query()->with('position')->find($evaluatorId);
-        $evaluatee = Employee::query()->with('position')->find($evaluateeId);
+        $evaluatee = Employee::query()->find($evaluateeId);
 
-        if (! $evaluator || ! $evaluatee || ! $evaluator->position || ! $evaluatee->position) {
-            return false;
-        }
-
-        // 1 tingkat di atas (level lebih kecil merepresentasikan tingkat lebih tinggi, misal 1 = Kadiv, 2 = Staff)
-        return (int) $evaluator->position->level === ((int) $evaluatee->position->level - 1)
-            || (int) $evaluatee->direct_supervisor_id === $evaluatorId;
+        return $evaluatee !== null
+            && (int) $evaluatee->direct_supervisor_id === $evaluatorId;
     }
 }

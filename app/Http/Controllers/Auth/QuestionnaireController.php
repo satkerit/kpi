@@ -70,9 +70,9 @@ final class QuestionnaireController extends Controller
 
         // Cooldown: cegah spam kirim ulang OTP.
         // OTP lama masih valid — arahkan langsung ke form verifikasi agar bisa digunakan.
-        $cooldownKey = 'questionnaire.otp.cooldown.' . $employee->nik;
+        $cooldownKey = 'questionnaire.otp.cooldown.'.$employee->nik;
         if (Cache::has($cooldownKey)) {
-            $ttl = (int) Cache::get($cooldownKey . '.ttl', self::RESEND_COOLDOWN);
+            $ttl = (int) Cache::get($cooldownKey.'.ttl', self::RESEND_COOLDOWN);
 
             return redirect()
                 ->route('questionnaire.verify.form')
@@ -92,19 +92,21 @@ final class QuestionnaireController extends Controller
 
         // Set cooldown — simpan TTL sisa agar bisa ditampilkan ke user.
         Cache::put($cooldownKey, true, self::RESEND_COOLDOWN);
-        Cache::put($cooldownKey . '.ttl', self::RESEND_COOLDOWN, self::RESEND_COOLDOWN);
+        Cache::put($cooldownKey.'.ttl', self::RESEND_COOLDOWN, self::RESEND_COOLDOWN);
 
         // Di environment production: kirim OTP via email.
-        // Di development/local/testing: bypass pengiriman email, OTP langsung ditampilkan di layar.
+        // Di development/local/testing: bypass pengiriman email, OTP hanya ditunjukkan jika config app.debug = true & APP_ENV !== production.
         $isProduction = app()->isProduction();
 
         if ($isProduction) {
             MailSettingController::applyMailConfig();
             Mail::to($employee->email)->send(new OtpMail($otp, $employee->name));
-            $statusMessage = 'OTP telah dikirim ke email ' . maskEmail($employee->email) . '. Berlaku 10 menit.';
+            $statusMessage = 'OTP telah dikirim ke email '.maskEmail($employee->email).'. Berlaku 10 menit.';
         } else {
-            session()->flash('dev_otp', $otp);
-            $statusMessage = '[Mode Dev] Email tidak dikirim. Silakan gunakan kode OTP yang tertera di bawah.';
+            if (config('app.debug')) {
+                session()->flash('dev_otp', $otp);
+            }
+            $statusMessage = '[Mode Dev] Email tidak dikirim. Silakan periksa log email atau kode OTP tertera jika mode debug aktif.';
         }
 
         return redirect()
@@ -218,12 +220,7 @@ final class QuestionnaireController extends Controller
             return redirect()->route('kpi.index')->with('error', 'Belum ada periode KPI yang dibuka.');
         }
 
-        $service->ensureFor($me, $period->id);
-
-        $assignments = $me->assignmentsAsEvaluator()
-            ->where('period_id', $period->id)
-            ->with(['evaluatee.position', 'evaluatee.office', 'scores'])
-            ->get();
+        $assignments = $service->getAssignmentsFor($me, $period->id);
 
         $sections = [];
         foreach ($assignments as $assignment) {
@@ -246,9 +243,8 @@ final class QuestionnaireController extends Controller
             'pendingCount' => $pendingCount,
             'labels' => [
                 'P3' => 'Penilaian Atasan Langsung',
-                'P2' => 'Penilaian Rekan Selevel',
+                'P2' => 'Penilaian Rekan Satu Atasan',
                 'P1' => 'Penilaian Bawahan',
-                'SELF' => 'Penilaian Diri Sendiri',
             ],
         ]);
     }
@@ -257,7 +253,7 @@ final class QuestionnaireController extends Controller
      * Submit seluruh kuesioner sekaligus: validasi per assignment,
      * simpan semua skor dalam satu transaksi DB.
      */
-    public function submitAll(Request $request): RedirectResponse
+    public function submitAll(Request $request, QuestionnaireAssignmentService $service): RedirectResponse
     {
         /** @var Employee|null $me */
         $me = $request->attributes->get('kpi_employee');
@@ -280,25 +276,23 @@ final class QuestionnaireController extends Controller
         $maxScore = (float) (RatingScale::query()->where('period_id', $period->id)->max('max_value') ?: 10);
         $allowNotObserved = (bool) ($period->setting('allow_not_observed') ?? true);
 
-        $assignments = $me->assignmentsAsEvaluator()
-            ->where('period_id', $period->id)
-            ->where('status', 'pending')
-            ->get();
+        // Ambil penugasan untuk pegawai saat ini (termasuk yang belum disimpan ke DB)
+        $assignments = $service->getAssignmentsFor($me, $period->id)->where('status', 'pending');
 
         if ($assignments->isEmpty()) {
             return redirect()->route('questionnaire.form')->with('success', 'Semua penilaian sudah disubmit. Terima kasih.');
         }
 
-        // Validasi dinamis: scores.{assignmentId}.{subcriteriaId}
+        // Validasi dinamis: scores.{formKey}.{subcriteriaId}
         $rules = [];
         foreach ($assignments as $assignment) {
+            $keyPrefix = $assignment->form_key;
             $subcriteria = StrategyFactory::make($assignment->evaluator_type)->validSubcriteria();
             foreach ($subcriteria as $sc) {
-                $key = "scores.{$assignment->id}.{$sc->id}";
-                $rules[$key] = ['nullable', 'numeric', 'min:0', "max:{$maxScore}"];
-                $rules["not_observed.{$assignment->id}.{$sc->id}"] = ['sometimes', 'boolean'];
+                $rules["scores.{$keyPrefix}.{$sc->id}"] = ['nullable', 'numeric', 'min:0', "max:{$maxScore}"];
+                $rules["not_observed.{$keyPrefix}.{$sc->id}"] = ['sometimes', 'boolean'];
             }
-            $rules["comments.{$assignment->id}.*"] = ['nullable', 'string', 'max:1000'];
+            $rules["comments.{$keyPrefix}.*"] = ['nullable', 'string', 'max:1000'];
         }
 
         $validated = $request->validate(
@@ -308,24 +302,37 @@ final class QuestionnaireController extends Controller
 
         // Setiap subkriteria wajib diisi ATAU ditandai "Tidak Diamati".
         foreach ($assignments as $assignment) {
+            $keyPrefix = $assignment->form_key;
             $subcriteria = StrategyFactory::make($assignment->evaluator_type)->validSubcriteria();
             foreach ($subcriteria as $sc) {
-                $raw = $validated['scores'][$assignment->id][$sc->id] ?? null;
-                $notObserved = $allowNotObserved && ! empty($validated['not_observed'][$assignment->id][$sc->id]);
+                $raw = $validated['scores'][$keyPrefix][$sc->id] ?? null;
+                $notObserved = $allowNotObserved && ! empty($validated['not_observed'][$keyPrefix][$sc->id]);
 
                 if (! $notObserved && $raw === null) {
                     return back()
-                        ->withErrors(["scores.{$assignment->id}.{$sc->id}" => "Nilai {$sc->name} untuk {$assignment->evaluatee->name} wajib diisi atau tandai \"Tidak Diamati\"."])
+                        ->withErrors(["scores.{$keyPrefix}.{$sc->id}" => "Nilai {$sc->name} untuk {$assignment->evaluatee->name} wajib diisi atau tandai \"Tidak Diamati\"."])
                         ->withInput();
                 }
             }
         }
 
-        DB::transaction(function () use ($validated, $assignments, $allowNotObserved) {
+        DB::transaction(function () use ($validated, $assignments, $period, $me, $allowNotObserved) {
             foreach ($assignments as $assignment) {
-                foreach ($validated['scores'][$assignment->id] ?? [] as $subcriteriaId => $rawScore) {
+                $keyPrefix = $assignment->form_key;
+
+                // Jika assignment belum tersimpan di DB, buatkan sekarang karena penilaiannya sudah selesai diisi
+                $persistedAssignment = KpiAssignment::query()->firstOrCreate([
+                    'period_id' => $period->id,
+                    'evaluator_id' => $me->id,
+                    'evaluatee_id' => $assignment->evaluatee_id,
+                ], [
+                    'evaluator_type' => $assignment->evaluator_type,
+                    'status' => 'pending',
+                ]);
+
+                foreach ($validated['scores'][$keyPrefix] ?? [] as $subcriteriaId => $rawScore) {
                     $subcriteria = KpiSubcriteria::query()->findOrFail($subcriteriaId);
-                    $isNotObserved = $allowNotObserved && ! empty($validated['not_observed'][$assignment->id][$subcriteriaId]);
+                    $isNotObserved = $allowNotObserved && ! empty($validated['not_observed'][$keyPrefix][$subcriteriaId]);
 
                     $weightedScore = $isNotObserved || $rawScore === null
                         ? 0
@@ -333,18 +340,18 @@ final class QuestionnaireController extends Controller
 
                     KpiScore::query()->updateOrCreate(
                         [
-                            'assignment_id' => $assignment->id,
+                            'assignment_id' => $persistedAssignment->id,
                             'subcriteria_id' => $subcriteriaId,
                         ],
                         [
                             'raw_score' => $isNotObserved ? null : $rawScore,
                             'weighted_score' => $weightedScore,
-                            'comment' => $validated['comments'][$assignment->id][$subcriteriaId] ?? null,
+                            'comment' => $validated['comments'][$keyPrefix][$subcriteriaId] ?? null,
                         ]
                     );
                 }
 
-                $assignment->update(['status' => 'submitted']);
+                $persistedAssignment->update(['status' => 'submitted']);
             }
         });
 

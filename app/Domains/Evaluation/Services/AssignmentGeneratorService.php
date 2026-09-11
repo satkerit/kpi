@@ -11,35 +11,45 @@ use App\Domains\MasterKpi\Models\KpiPeriod;
 final class AssignmentGeneratorService
 {
     /**
-     * Generate penugasan P1 (atasan langsung) & P3 (bawahan langsung)
-     * berdasarkan kolom direct_supervisor_id untuk seluruh pegawai pada periode tertentu.
+     * Generate penugasan untuk seluruh pegawai pada periode tertentu:
+     * - P1: atasan langsung menilai bawahannya.
+     * - P3: pegawai menilai atasan langsung + manajer (orang yang sama cukup 1x).
      *
      * @return array{p1: int, p3: int}
      */
     public function generateForPeriod(int $periodId): array
     {
         $employees = Employee::query()
-            ->whereNotNull('direct_supervisor_id')
-            ->get();
+            ->where(fn ($q) => $q->whereNotNull('direct_supervisor_id')->orWhereNotNull('manager_id'))
+            ->get(['id', 'direct_supervisor_id', 'manager_id']);
 
         $createdP1 = 0;
         $createdP3 = 0;
 
         foreach ($employees as $employee) {
             // Atasan langsung menilai pegawai (P1)
-            $createdP1 += $this->createAssignment($periodId, $employee->direct_supervisor_id, $employee->id, 'P1');
+            if ($employee->direct_supervisor_id) {
+                $createdP1 += $this->createAssignment($periodId, $employee->direct_supervisor_id, $employee->id, 'P1');
+            }
 
-            // Pegawai menilai atasan langsungnya (P3)
-            $createdP3 += $this->createAssignment($periodId, $employee->id, $employee->direct_supervisor_id, 'P3');
+            // Pegawai menilai atasan langsung dan manajer (P3) — dedup: orang sama cukup 1x.
+            $superiorIds = collect([$employee->direct_supervisor_id, $employee->manager_id])
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0 && $id !== $employee->id)
+                ->unique();
+
+            foreach ($superiorIds as $superiorId) {
+                $createdP3 += $this->createAssignment($periodId, $employee->id, $superiorId, 'P3');
+            }
         }
 
         return ['p1' => $createdP1, 'p3' => $createdP3];
     }
 
     /**
-     * Generate penugasan P2 untuk pegawai selevel (bisa lintas kantor/divisi).
-     * Jumlah penilai per pegawai dibatasi pengaturan periode `max_peers_per_evaluatee`
-     * (standar 360: ~6 penilai; mencegah ledakan kombinasi O(n^2)).
+     * Generate penugasan P2: pegawai saling menilai dengan rekan yang
+     * atasan langsungnya sama (kecuali atasan/manajer — sudah dinilai via P3).
+     * Jumlah penilai per pegawai dibatasi `max_peers_per_evaluatee`.
      *
      * @return int Jumlah penugasan P2 yang baru dibuat.
      */
@@ -48,24 +58,29 @@ final class AssignmentGeneratorService
         $period = KpiPeriod::query()->find($periodId);
         $maxPeers = (int) ($period?->setting('max_peers_per_evaluatee') ?? KpiPeriod::DEFAULT_SETTINGS['max_peers_per_evaluatee']);
 
-        $employees = Employee::query()
-            ->with('position')
-            ->whereHas('position')
-            ->get()
-            ->groupBy(fn(Employee $e) => (int) $e->position->level);
+        $groups = Employee::query()
+            ->whereNotNull('direct_supervisor_id')
+            ->get(['id', 'direct_supervisor_id', 'manager_id'])
+            ->groupBy('direct_supervisor_id');
 
         $created = 0;
 
-        foreach ($employees as $levelGroup) {
-            foreach ($levelGroup as $evaluatee) {
-                $peers = $levelGroup->reject(fn(Employee $p) => $p->id === $evaluatee->id);
+        foreach ($groups as $supervisorId => $group) {
+            $superiorIds = collect([$supervisorId])
+                ->merge($group->pluck('manager_id'))
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique();
 
-                if ($maxPeers > 0 && $peers->count() > $maxPeers) {
-                    $peers = $peers->random($maxPeers);
-                }
+            foreach ($group as $evaluatee) {
+                $peers = $group
+                    ->reject(fn (Employee $p) => $p->id === $evaluatee->id || $superiorIds->contains((int) $p->id))
+                    ->pluck('id');
 
-                foreach ($peers as $peer) {
-                    $created += $this->createAssignment($periodId, $peer->id, $evaluatee->id, 'P2');
+                $selected = $maxPeers > 0 ? $peers->random(min($maxPeers, $peers->count())) : $peers;
+
+                foreach ($selected as $peerId) {
+                    $created += $this->createAssignment($periodId, (int) $peerId, $evaluatee->id, 'P2');
                 }
             }
         }
@@ -75,11 +90,12 @@ final class AssignmentGeneratorService
 
     private function createAssignment(int $periodId, int $evaluatorId, int $evaluateeId, string $type): int
     {
+        // Anti-double global: satu evaluator menilai satu orang cukup sekali
+        // per periode, apa pun tipenya.
         $exists = KpiAssignment::query()
             ->where('period_id', $periodId)
             ->where('evaluator_id', $evaluatorId)
             ->where('evaluatee_id', $evaluateeId)
-            ->where('evaluator_type', $type)
             ->exists();
 
         if ($exists) {

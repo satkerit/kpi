@@ -8,7 +8,7 @@
             <h1 class="text-2xl font-extrabold text-ink tracking-tight">Manajemen Permission</h1>
             <p class="text-sm text-ink-muted mt-1">Kelola permission atomik untuk kontrol akses granular.</p>
         </div>
-        <a href="{{ route('admin.permissions.create') }}" class="inline-flex items-center gap-2 bg-navy text-white rounded-xl px-5 py-2.5 text-sm font-semibold hover:bg-navy-deep transition shadow-card">
+        <a href="{{ route('admin.permissions.create') }}" class="btn-action-primary">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
             Tambah Permission
         </a>
@@ -35,11 +35,17 @@
                             <td class="px-4 py-3.5"><span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-navy-tint text-navy">{{ $permission->module }}</span></td>
                             <td class="px-4 py-3.5 text-ink-muted text-xs max-w-xs truncate">{{ $permission->description ?? '—' }}</td>
                             <td class="px-4 py-3.5 text-center num font-semibold text-ink-soft">{{ $permission->roles_count }}</td>
-                            <td class="px-5 py-3.5 text-right space-x-2">
-                                <a href="{{ route('admin.permissions.edit', $permission) }}" class="text-xs font-semibold text-navy hover:underline">Edit</a>
+                            <td class="px-5 py-3.5 text-right space-x-1.5">
+                                <a href="{{ route('admin.permissions.edit', $permission) }}" class="btn-table-edit">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    Edit
+                                </a>
                                 <form method="POST" action="{{ route('admin.permissions.destroy', $permission) }}" class="inline" onsubmit="return confirm('Hapus permission ini?')">
                                     @csrf @method('DELETE')
-                                    <button class="text-xs font-semibold text-rose-600 hover:underline">Hapus</button>
+                                    <button class="btn-table-delete">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        Hapus
+                                    </button>
                                 </form>
                             </td>
                         </tr>

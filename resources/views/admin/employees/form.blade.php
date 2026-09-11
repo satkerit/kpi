@@ -145,10 +145,10 @@
             </div>
 
             <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                <a href="{{ route('admin.employees.index') }}" class="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-ink-muted hover:bg-slate-50 transition">
+                <a href="{{ route('admin.employees.index') }}" class="btn-action-secondary">
                     Batal
                 </a>
-                <button type="submit" class="px-6 py-2.5 rounded-xl bg-navy text-white text-sm font-bold shadow hover:bg-navy-deep transition">
+                <button type="submit" class="btn-action-primary">
                     {{ $employee->exists ? 'Simpan Perubahan' : 'Buat Pegawai' }}
                 </button>
             </div>

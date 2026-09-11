@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ config('app.name', 'KPI 360') }} — Penilaian Kinerja 360°</title>
+    <title>{{ \App\Models\AppSetting::get('app_name', config('app.name', 'KPI 360')) }} — {{ \App\Models\AppSetting::get('app_slogan', 'Penilaian Kinerja 360°') }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -16,13 +16,15 @@
                         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
                     },
                     colors: {
-                        ink: { DEFAULT: '#16233a', soft: '#3d4c63', muted: '#7c8aa0' },
-                        navy: { DEFAULT: '#16324f', deep: '#0f2438', tint: '#eef3f8' },
-                        gold: { DEFAULT: '#b98e1f', soft: '#f6ecd4', deep: '#8a6a12' },
-                        paper: '#f6f7f9',
+                        ink: { DEFAULT: '#1e293b', soft: '#475569', muted: '#94a3b8' },
+                        navy: { DEFAULT: '#1e3a8a', deep: '#0f172a', tint: '#f1f5f9' },
+                        gold: { DEFAULT: '#d97706', soft: '#fef3c7', deep: '#92400e' },
+                        paper: '#f8fafc',
                     },
                     boxShadow: {
                         card: '0 1px 2px rgba(22,35,58,.06), 0 4px 16px rgba(22,35,58,.06)',
+                        btn: '0 1px 2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.12)',
+                        'btn-hover': '0 4px 12px -2px rgba(15, 23, 42, 0.18)',
                     },
                 },
             },
@@ -33,14 +35,157 @@
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-thumb { background: #c9d2de; border-radius: 4px; }
         .num { font-variant-numeric: tabular-nums; }
+
+        /* Unified Premium Design System for Action Buttons */
+        .btn-action-primary {
+            display: inline-flex;
+            items-center: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background-color: #1e3a8a;
+            color: #ffffff;
+            font-size: 0.875rem;
+            font-weight: 700;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.75rem;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.12);
+        }
+        .btn-action-primary:hover {
+            background-color: #0f172a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.18);
+        }
+        .btn-action-primary:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn-action-secondary {
+            display: inline-flex;
+            items-center: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background-color: #ffffff;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 0.625rem 1.125rem;
+            border-radius: 0.75rem;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        .btn-action-secondary:hover {
+            background-color: #f8fafc;
+            border-color: #cbd5e1;
+            color: #0f172a;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px -1px rgba(15, 23, 42, 0.08);
+        }
+        .btn-action-secondary:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn-action-success {
+            display: inline-flex;
+            items-center: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background-color: #059669;
+            color: #ffffff;
+            font-size: 0.875rem;
+            font-weight: 700;
+            padding: 0.625rem 1.125rem;
+            border-radius: 0.75rem;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 1px 2px rgba(5, 150, 105, 0.1), 0 2px 6px -1px rgba(5, 150, 105, 0.15);
+        }
+        .btn-action-success:hover {
+            background-color: #047857;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px -2px rgba(5, 150, 105, 0.25);
+        }
+        .btn-action-success:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn-action-gold {
+            display: inline-flex;
+            items-center: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background-color: #d97706;
+            color: #ffffff;
+            font-size: 0.875rem;
+            font-weight: 700;
+            padding: 0.625rem 1.125rem;
+            border-radius: 0.75rem;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 1px 2px rgba(217, 119, 6, 0.1), 0 2px 6px -1px rgba(217, 119, 6, 0.15);
+        }
+        .btn-action-gold:hover {
+            background-color: #b45309;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px -2px rgba(217, 119, 6, 0.25);
+        }
+        .btn-action-gold:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        /* Table Action Buttons */
+        .btn-table-edit {
+            display: inline-flex;
+            items-center: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #1e3a8a;
+            background-color: #eff6ff;
+            border: 1px solid #dbeafe;
+            transition: all 0.15s ease;
+        }
+        .btn-table-edit:hover {
+            background-color: #1e3a8a;
+            color: #ffffff;
+            border-color: #1e3a8a;
+            transform: translateY(-1px);
+        }
+
+        .btn-table-delete {
+            display: inline-flex;
+            items-center: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #e11d48;
+            background-color: #fff1f2;
+            border: 1px solid #ffe4e6;
+            transition: all 0.15s ease;
+        }
+        .btn-table-delete:hover {
+            background-color: #e11d48;
+            color: #ffffff;
+            border-color: #e11d48;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body class="bg-paper font-sans text-ink antialiased min-h-screen">
 <div class="min-h-screen lg:flex">
     <div class="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-3 bg-navy-deep text-white px-4 py-3">
         <div class="flex items-center gap-2 min-w-0">
-            <div class="w-9 h-9 rounded-xl bg-gold text-navy-deep font-extrabold grid place-items-center shrink-0">K</div>
-            <p class="text-sm font-bold truncate">KPI 360</p>
+            @if($appLogo = \App\Models\AppSetting::get('app_logo'))
+                <img src="{{ Storage::url($appLogo) }}" alt="Logo" class="w-9 h-9 rounded-xl object-contain bg-white/10 p-1 shrink-0">
+            @else
+                <div class="w-9 h-9 rounded-xl bg-gold text-navy-deep font-extrabold grid place-items-center shrink-0">
+                    {{ strtoupper(mb_substr(\App\Models\AppSetting::get('app_name', 'KPI 360'), 0, 3)) }}
+                </div>
+            @endif
+            <p class="text-sm font-bold truncate">{{ \App\Models\AppSetting::get('app_name', 'KPI 360') }}</p>
         </div>
         <button type="button" id="sidebarToggle" class="p-2 -mr-1 rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gold" aria-label="Buka menu navigasi">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -49,10 +194,16 @@
     <div id="sidebarOverlay" class="hidden fixed inset-0 z-30 bg-navy-deep/60 lg:hidden"></div>
     <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 hidden w-64 shrink-0 bg-navy-deep text-white/90 flex-col lg:static lg:flex">
         <div class="flex items-center gap-3 px-6 h-16 border-b border-white/10">
-            <div class="w-9 h-9 rounded-lg bg-gold/90 flex items-center justify-center font-extrabold text-navy-deep text-sm tracking-tight">360</div>
-            <div class="leading-tight">
-                <p class="font-bold text-white text-sm">KPI 360</p>
-                <p class="text-[11px] text-white/50">SK 016/Dir/BSB.02</p>
+            @if($appLogo = \App\Models\AppSetting::get('app_logo'))
+                <img src="{{ Storage::url($appLogo) }}" alt="Logo" class="w-9 h-9 rounded-lg object-contain bg-white/10 p-1 shrink-0">
+            @else
+                <div class="w-9 h-9 rounded-lg bg-gold/90 flex items-center justify-center font-extrabold text-navy-deep text-sm tracking-tight shrink-0">
+                    {{ strtoupper(mb_substr(\App\Models\AppSetting::get('app_name', 'KPI 360'), 0, 3)) }}
+                </div>
+            @endif
+            <div class="leading-tight min-w-0">
+                <p class="font-bold text-white text-sm truncate">{{ \App\Models\AppSetting::get('app_name', 'KPI 360') }}</p>
+                <p class="text-[11px] text-white/50 truncate">{{ \App\Models\AppSetting::get('app_sk_number', 'SK 016/Dir/BSB.02') }}</p>
             </div>
         </div>
         <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -120,11 +271,11 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6m-8 3h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>
                 Jabatan
             </a>
-            <a href="{{ route('admin.evaluation-rules.index') }}"
+            <a href="{{ route('admin.system-settings.show') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition
-                      {{ request()->routeIs('admin.evaluation-rules.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4"/></svg>
-                Setup Penilaian
+                      {{ request()->routeIs('admin.system-settings.*') ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Setup Sistem
             </a>
             <a href="{{ route('admin.mail-settings.show') }}"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition

@@ -136,6 +136,7 @@ final class ImportExportController extends Controller
         $imported = 0;
         $errors = 0;
         $firstError = null;
+        $pendingEmployees = [];
 
         while (($row = fgetcsv($handle, 0, $delim)) !== false) {
             // Ignore empty rows
@@ -160,11 +161,17 @@ final class ImportExportController extends Controller
             }
 
             try {
+                // Pegawai di-buffer untuk two-pass: pass 1 simpan semua data pokok,
+                // pass 2 baru tautkan atasan/manajer (urut baris CSV bebas).
+                if ($type === 'employees') {
+                    $pendingEmployees[] = $data;
+
+                    continue;
+                }
                 match ($type) {
                     'offices' => $this->importOffice($data),
                     'divisions' => $this->importDivision($data),
                     'positions' => $this->importPosition($data),
-                    'employees' => $this->importEmployee($data),
                     default => throw new \InvalidArgumentException('Tipe import tidak valid.'),
                 };
                 $imported++;
@@ -177,6 +184,30 @@ final class ImportExportController extends Controller
         }
 
         fclose($handle);
+
+        // Pass 1: simpan data pokok pegawai (tanpa relasi atasan/manajer).
+        $links = [];
+        if ($type === 'employees') {
+            foreach ($pendingEmployees as $data) {
+                try {
+                    $links[] = $this->importEmployeeBase($data);
+                    $imported++;
+                } catch (\Exception $e) {
+                    $errors++;
+                    $firstError ??= $e->getMessage();
+                }
+            }
+
+            // Pass 2: tautkan atasan/manajer — kini semua NIK sudah ada di DB.
+            foreach ($links as [$nik, $supervisorNik, $managerNik]) {
+                try {
+                    $this->linkEmployeeRelations($nik, $supervisorNik, $managerNik);
+                } catch (\Exception $e) {
+                    $errors++;
+                    $firstError ??= $e->getMessage();
+                }
+            }
+        }
 
         $msg = "Berhasil mengimpor {$imported} data.";
         if ($errors > 0) {
@@ -236,7 +267,13 @@ final class ImportExportController extends Controller
         );
     }
 
-    private function importEmployee(array $data): void
+    /**
+     * Pass 1 impor pegawai: simpan data pokok tanpa relasi atasan/manajer.
+     * Return [nik, supervisorNik, managerNik] untuk di-link di pass 2.
+     *
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function importEmployeeBase(array $data): array
     {
         $nik = trim($data['nik'] ?? '');
         $name = trim($data['name'] ?? '');
@@ -301,16 +338,7 @@ final class ImportExportController extends Controller
             $division = $existing?->division;
         }
 
-        // Atasan Langsung & Manajer: opsional; kolom kosong/tak dikenal tidak menimpa data lama.
-        $supervisor = $supervisorNik !== '' ? Employee::where('nik', $supervisorNik)->first() : null;
-        $manager = $managerNik !== '' ? Employee::where('nik', $managerNik)->first() : null;
-        if ($supervisorNik !== '' && ! $supervisor) {
-            throw new \InvalidArgumentException("Atasan [{$supervisorNik}] tidak ditemukan.");
-        }
-        if ($managerNik !== '' && ! $manager) {
-            throw new \InvalidArgumentException("Manajer [{$managerNik}] tidak ditemukan.");
-        }
-
+        // Atasan Langsung & Manajer di-link di pass 2 (lihat linkEmployeeRelations).
         $isActive = $existing?->is_active ?? true;
         if (isset($data['is_active']) && trim((string) $data['is_active']) !== '') {
             $parsed = filter_var($data['is_active'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
@@ -319,7 +347,7 @@ final class ImportExportController extends Controller
             }
         }
 
-        $payload = [
+        Employee::updateOrCreate(['nik' => $nik], [
             'user_id' => $existing?->user_id,
             'name' => $name,
             'email' => $email !== '' ? $email : $existing?->email,
@@ -328,15 +356,37 @@ final class ImportExportController extends Controller
             'position_id' => $position->id,
             'phone' => $phone !== '' ? $phone : $existing?->phone,
             'is_active' => $isActive,
-        ];
+        ]);
 
-        if ($supervisor) {
+        return [$nik, $supervisorNik, $managerNik];
+    }
+
+    /**
+     * Pass 2 impor pegawai: tautkan atasan/manajer setelah semua NIK ada di DB.
+     * NIK kolom kosong = pertahankan relasi lama; NIK tak dikenal = error eksplisit.
+     */
+    private function linkEmployeeRelations(string $nik, string $supervisorNik, string $managerNik): void
+    {
+        $employee = Employee::where('nik', $nik)->firstOrFail();
+        $payload = [];
+
+        if ($supervisorNik !== '') {
+            $supervisor = Employee::where('nik', $supervisorNik)->first();
+            if (! $supervisor) {
+                throw new \InvalidArgumentException("Atasan [{$supervisorNik}] tidak ditemukan.");
+            }
             $payload['direct_supervisor_id'] = $supervisor->id;
         }
-        if ($manager) {
+        if ($managerNik !== '') {
+            $manager = Employee::where('nik', $managerNik)->first();
+            if (! $manager) {
+                throw new \InvalidArgumentException("Manajer [{$managerNik}] tidak ditemukan.");
+            }
             $payload['manager_id'] = $manager->id;
         }
 
-        Employee::updateOrCreate(['nik' => $nik], $payload);
+        if ($payload !== []) {
+            $employee->update($payload);
+        }
     }
 }

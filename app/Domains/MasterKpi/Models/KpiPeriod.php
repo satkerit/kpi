@@ -39,10 +39,10 @@ class KpiPeriod extends Model
     protected function casts(): array
     {
         return [
-            'year'       => 'integer',
+            'year' => 'integer',
             'start_date' => 'date',
-            'end_date'   => 'date',
-            'settings'   => 'array',
+            'end_date' => 'date',
+            'settings' => 'array',
         ];
     }
 

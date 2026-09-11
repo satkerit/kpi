@@ -17,9 +17,47 @@ final class KpiCriteriaController extends Controller
         $criteria = KpiCriteria::query()
             ->with('subcriteria')
             ->withCount('subcriteria')
+            ->orderBy('id')
             ->get();
 
         return view('kpi.criteria.index', compact('criteria'));
+    }
+
+    public function storeCriteria(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
+            'category' => ['nullable', 'string', 'max:100'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        KpiCriteria::query()->create($validated);
+
+        return back()->with('success', 'Kriteria Induk berhasil ditambahkan.');
+    }
+
+    public function updateCriteria(Request $request, KpiCriteria $criterion): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
+            'category' => ['nullable', 'string', 'max:100'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $criterion->update($validated);
+
+        return back()->with('success', 'Kriteria Induk berhasil diperbarui.');
+    }
+
+    public function destroyCriteria(KpiCriteria $criterion): RedirectResponse
+    {
+        if ($criterion->subcriteria()->exists()) {
+            return back()->withErrors(['criteria' => 'Kriteria tidak dapat dihapus karena masih memiliki subkriteria. Hapus subkriteria terlebih dahulu.']);
+        }
+
+        $criterion->delete();
+
+        return back()->with('success', 'Kriteria Induk berhasil dihapus.');
     }
 
     public function storeSubcriteria(Request $request): RedirectResponse

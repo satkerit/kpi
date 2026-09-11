@@ -37,7 +37,7 @@
                 <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Modul <span class="text-rose-500">*</span></label>
                 <input type="text" name="module" value="{{ old('module', $permission->module) }}" placeholder="Contoh: employees"
                     class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition" required>
-                <p class="text-xs text-ink-muted mt-1">Gunakan untuk mengelompokkan permission (employees, users, offices, divisions, departments, positions, roles, permissions, kpi).</p>
+                <p class="text-xs text-ink-muted mt-1">Gunakan untuk mengelompokkan permission (employees, users, offices, divisions, positions, roles, permissions, kpi).</p>
             </div>
 
             <div>

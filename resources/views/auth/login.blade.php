@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masuk — {{ config('app.name', 'KPI 360') }}</title>
+    <title>Masuk — {{ \App\Models\AppSetting::get('app_name', config('app.name', 'KPI 360')) }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -111,8 +111,8 @@
                 </label>
 
                 <button type="submit"
-                    class="w-full py-3.5 bg-navy-deep hover:bg-navy text-white text-sm font-bold rounded-lg transition shadow-card flex items-center justify-center gap-2">
-                    <svg class="w-4.5 h-4.5 w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-7.5A2.25 2.25 0 0 0 3.75 5.25v13.5A2.25 2.25 0 0 0 6 21h7.5a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
+                    class="w-full py-3.5 bg-navy-deep hover:bg-navy text-white text-sm font-bold rounded-xl transition duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-7.5A2.25 2.25 0 0 0 3.75 5.25v13.5A2.25 2.25 0 0 0 6 21h7.5a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
                     Masuk ke Dashboard
                 </button>
 
@@ -123,8 +123,8 @@
                 </div>
 
                 <a href="{{ route('questionnaire.start') }}"
-                    class="w-full py-3.5 bg-gold/10 hover:bg-gold/20 text-gold-deep border border-gold/40 text-sm font-bold rounded-lg transition flex items-center justify-center gap-2 text-center">
-                    <svg class="w-5 h-5 text-gold" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    class="w-full py-3.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 text-sm font-bold rounded-xl transition duration-200 shadow-sm hover:shadow hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 text-center">
+                    <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     Isi Kuisioner KPI (Verifikasi NIK &amp; OTP)
                 </a>
             </form>

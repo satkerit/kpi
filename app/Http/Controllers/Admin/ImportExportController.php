@@ -65,11 +65,18 @@ final class ImportExportController extends Controller
             return back()->with('error', 'Gagal membaca file yang diunggah.');
         }
 
-        $header = fgetcsv($handle);
-        if ($header === false) {
+        // Auto-deteksi delimiter: Excel Indonesia menyimpan CSV dengan ';' bukan ','.
+        // Tanpa ini seluruh baris terbaca satu kolom sehingga header tidak match dan
+        // nilai office/divisi hilang (fallback ke kantor default).
+        $firstLine = fgets($handle);
+        rewind($handle);
+        $delim = substr_count((string) $firstLine, ';') > substr_count((string) $firstLine, ',') ? ';' : ',';
+
+        $header = fgetcsv($handle, 0, $delim);
+        if ($header === false || count($header) === 0) {
             fclose($handle);
 
-            return back()->with('error', 'File CSV kosong.');
+            return back()->with('error', 'File CSV kosong atau header tidak valid.');
         }
 
         // Clean UTF-8 BOM from header if present
@@ -81,7 +88,7 @@ final class ImportExportController extends Controller
         // Normalisasi header: lowercase + spasi/strip jadi underscore + alias.
         // Tanpa ini, header seperti "Office_Code" tidak terbaca sebagai office_code,
         // lookup gagal, lalu fallback diam-diam menimpa office_id/division_id yang salah.
-        $header = array_map(fn($h) => strtolower(str_replace([' ', '-'], '_', trim((string) $h))), $header);
+        $header = array_map(fn ($h) => strtolower(str_replace([' ', '-'], '_', trim((string) $h))), $header);
         $aliases = [
             'supervisor' => 'direct_supervisor_nik',
             'supervisor_nik' => 'direct_supervisor_nik',
@@ -130,9 +137,9 @@ final class ImportExportController extends Controller
         $errors = 0;
         $firstError = null;
 
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = fgetcsv($handle, 0, $delim)) !== false) {
             // Ignore empty rows
-            if (empty(array_filter($row, fn($val) => trim((string) $val) !== ''))) {
+            if (empty(array_filter($row, fn ($val) => trim((string) $val) !== ''))) {
                 continue;
             }
 
@@ -251,7 +258,9 @@ final class ImportExportController extends Controller
         // Kode diisi tapi tidak ketemu = error (jangan fallback diam-diam ke kantor lain).
         $office = null;
         if ($officeCode !== '') {
-            $office = Office::whereRaw('UPPER(code) = ?', [strtoupper($officeCode)])->first()
+            $office = ctype_digit($officeCode)
+                ? Office::find((int) $officeCode)
+                : Office::whereRaw('UPPER(code) = ?', [strtoupper($officeCode)])->first()
                 ?? Office::where('name', $officeCode)->first();
         }
         if (! $office) {
@@ -281,7 +290,9 @@ final class ImportExportController extends Controller
         // Divisi: opsional; kolom kosong = pertahankan lama; kode tak dikenal = error.
         $division = null;
         if ($divisionCode !== '') {
-            $division = Division::whereRaw('UPPER(code) = ?', [strtoupper($divisionCode)])->first()
+            $division = ctype_digit($divisionCode)
+                ? Division::find((int) $divisionCode)
+                : Division::whereRaw('UPPER(code) = ?', [strtoupper($divisionCode)])->first()
                 ?? Division::where('name', $divisionCode)->first();
             if (! $division) {
                 throw new \InvalidArgumentException("Divisi [{$divisionCode}] tidak ditemukan.");

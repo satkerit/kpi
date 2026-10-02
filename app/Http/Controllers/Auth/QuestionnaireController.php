@@ -68,14 +68,28 @@ final class QuestionnaireController extends Controller
 
         // Cooldown: cegah spam kirim ulang OTP.
         // OTP lama masih valid — arahkan langsung ke form verifikasi agar bisa digunakan.
+        // PENTING: pastikan otp_challenge_id TETAP di session (jangan hanya flash otp_nik).
         $cooldownKey = 'questionnaire.otp.cooldown.'.$employee?->nik;
         if ($hasEmail && $employee && Cache::has($cooldownKey)) {
             $ttl = (int) Cache::get($cooldownKey.'.ttl', self::RESEND_COOLDOWN);
 
+            // Jika session sudah punya challenge_id, biarkan. Jika tidak, ambil dari cache.
+            $existingChallenge = $request->session()->get('otp_challenge_id');
+            if (! $existingChallenge) {
+                // Cari challenge_id terakhir dari cache (pattern: questionnaire.otp.{nik}.*).
+                // Ini fallback jika session hilang tapi cache masih ada.
+                $existingChallenge = (string) Cache::get('questionnaire.otp_challenge.'.$employee->nik, '');
+            }
+
+            if ($existingChallenge) {
+                // Pastikan session punya challenge_id yang valid.
+                $request->session()->put('otp_nik', $employee->nik);
+                $request->session()->put('otp_challenge_id', $existingChallenge);
+            }
+
             return redirect()
                 ->route('questionnaire.verify.form')
-                ->with('status', "OTP sudah dikirim sebelumnya. Masukkan kode dari email Anda (tunggu {$ttl} detik untuk minta ulang).")
-                ->with('otp_nik', $employee->nik);
+                ->with('status', "OTP sudah dikirim sebelumnya. Masukkan kode dari email Anda (tunggu {$ttl} detik untuk minta ulang).");
         }
 
         if (! $hasEmail) {
@@ -124,6 +138,9 @@ final class QuestionnaireController extends Controller
         // SUID token asli disimpan terpisah (untuk validasi magic link), TTL sama dengan OTP.
         Cache::put("questionnaire.suid.{$employee->nik}.{$challengeId}", $suid, $expiresAt);
 
+        // Simpan challenge_id terakhir per NIK di cache (untuk recovery saat cooldown).
+        Cache::put('questionnaire.otp_challenge.'.$employee->nik, $challengeId, $expiresAt);
+
         // Set cooldown — simpan TTL sisa agar bisa ditampilkan ke user.
         Cache::put($cooldownKey, true, self::RESEND_COOLDOWN);
         Cache::put($cooldownKey.'.ttl', self::RESEND_COOLDOWN, self::RESEND_COOLDOWN);
@@ -154,6 +171,14 @@ final class QuestionnaireController extends Controller
     {
         $nik = (string) $request->session()->get('otp_nik', '');
         $challengeId = (string) $request->session()->get('otp_challenge_id', '');
+
+        // Log diagnostic.
+        Log::info('showVerify accessed', [
+            'nik' => $nik,
+            'challenge_id' => $challengeId !== '' ? substr($challengeId, 0, 8).'...' : '(empty)',
+            'session_id' => $request->session()->getId(),
+            'ip' => $request->ip(),
+        ]);
 
         if ($nik === '' || $challengeId === '') {
             return redirect()->route('questionnaire.start');
@@ -195,6 +220,14 @@ final class QuestionnaireController extends Controller
         if ($challengeId === '' || $sessionNik === ''
             || ! hash_equals($challengeId, $validated['challenge_id'])
             || ! hash_equals($sessionNik, $validated['nik'])) {
+            Log::warning('verify: challenge mismatch', [
+                'form_nik' => $validated['nik'],
+                'form_challenge' => substr($validated['challenge_id'], 0, 8).'...',
+                'session_nik' => $sessionNik,
+                'session_challenge' => $challengeId !== '' ? substr($challengeId, 0, 8).'...' : '(empty)',
+                'ip' => $request->ip(),
+            ]);
+
             $request->session()->forget(['otp_nik', 'otp_challenge_id']);
 
             return back()->withErrors(['otp' => 'OTP tidak valid atau telah kedaluwarsa.'])->onlyInput('nik');

@@ -160,8 +160,18 @@ final class MailSettingController extends Controller
             // Normalisasi tipe nilai sesuai key target.
             $normalized = match ($configKey) {
                 'mail.mailers.smtp.port' => (int) $value,
+                'mail.mailers.smtp.scheme' => match ((string) $value) {
+                    'tls' => 'smtp',   // Laravel 13: "smtp" = STARTTLS (port 587)
+                    'ssl' => 'smtps',  // Laravel 13: "smtps" = implicit TLS (port 465)
+                    '' => null,
+                    default => (string) $value,
+                },
                 default => (string) $value,
             };
+
+            if ($normalized === null) {
+                continue;
+            }
 
             Config::set($configKey, $normalized);
         }

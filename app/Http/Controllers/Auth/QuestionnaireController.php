@@ -228,12 +228,31 @@ final class QuestionnaireController extends Controller
         }
 
         // Sesi kuesioner: marker session terikat IP + user-agent, TANPA login web guard.
-        $request->session()->regenerate();
+        //
+        // PENTING: HAPUS `session()->regenerate()` di sini.
+        // Alasannya: regenerate() membuat id session BARU, dan cookie session baru
+        // dikirim ke browser pada response berikutnya (POST verify). Namun,
+        // browser belum menyimpan cookie tersebut saat GET /kuesioner/form
+        // berikutnya dikirim — Laravel pun melihatnya sebagai guest.
+        // Karena rute form sudah di luar grup 'guest' (fix route sebelumnya),
+        // masalahnya justru di cookie: marker session tersimpan di id session
+        // lama (yang cookie-nya masih di browser), sementara id baru belum
+        // dikenal browser. Solusi: simpan marker di id session yang SAMA
+        // (yang cookie-nya sudah di browser), hanya regenerateToken untuk CSRF.
+        $request->session()->regenerateToken();
         $request->session()->put(ResolveKpiEmployee::SESSION_KEY, $employee->id);
         $request->session()->put(ResolveKpiEmployee::SESSION_EXPIRY, now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp);
         $request->session()->put(ResolveKpiEmployee::SESSION_BIND, ResolveKpiEmployee::bindHash($request));
 
-        return redirect()->intended(route('questionnaire.form'));
+        // Log diagnostic: bantu debug jika redirect ke login masih terjadi.
+        Log::info('OTP verified', [
+            'nik' => $employee->nik,
+            'employee_id' => $employee->id,
+            'session_id' => $request->session()->getId(),
+            'ip' => $request->ip(),
+        ]);
+
+        return redirect()->route('questionnaire.form');
     }
 
     /**
@@ -245,6 +264,17 @@ final class QuestionnaireController extends Controller
     {
         /** @var Employee|null $me */
         $me = $request->attributes->get('kpi_employee');
+
+        // Log diagnostic: bantu debug jika redirect ke login masih terjadi.
+        Log::info('Questionnaire form accessed', [
+            'has_employee' => (bool) $me,
+            'employee_id' => $me?->id,
+            'employee_nik' => $me?->nik,
+            'session_id' => $request->session()->getId(),
+            'session_has_marker' => (bool) $request->session()->get(ResolveKpiEmployee::SESSION_KEY),
+            'auth_check' => auth()->check(),
+            'ip' => $request->ip(),
+        ]);
 
         if (! $me) {
             return redirect()->route('questionnaire.start')

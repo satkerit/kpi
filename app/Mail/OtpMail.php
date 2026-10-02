@@ -51,6 +51,8 @@ final class OtpMail extends Mailable
     /**
      * Render HTML email dengan inline CSS (dipilih inline karena sebagian
      * client email — Gmail, Outlook — memblokir <style> di <head>).
+     *
+     * Desain OTP: 1 digit per kotak (6 kotak), tanpa spasi antar digit.
      */
     private function renderHtml(): string
     {
@@ -59,14 +61,21 @@ final class OtpMail extends Mailable
         $name = trim($this->recipientName);
         $firstName = e(explode(' ', $name)[0] ?: $name);
 
-        $code = $this->code;
-        $left = e(substr($code, 0, 3));
-        $right = e(substr($code, 3, 3));
+        // Pecah kode OTP digit-per-digit untuk kotak individual.
+        $digits = str_split($this->code);
+        $otpBoxes = '';
+        foreach ($digits as $d) {
+            $otpBoxes .= '<td style="padding:0 4px;">'
+                .'<div style="display:inline-block; width:56px; height:64px; line-height:64px; text-align:center;'
+                .' background:#ffffff; border:2px solid #b98e1f; border-radius:8px;'
+                .' font-family:\'JetBrains Mono\', \'Courier New\', monospace; font-size:30px; font-weight:700; color:#0f2438;">'
+                .e($d)
+                .'</div></td>';
+        }
 
         $expires = e(now()->addMinutes($this->minutes)->translatedFormat('d F Y \pukul H:i'));
 
         $font = "'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
-        $mono = "'JetBrains Mono', 'Courier New', monospace";
 
         return '<!DOCTYPE html>'
             .'<html lang="id">'
@@ -87,14 +96,18 @@ final class OtpMail extends Mailable
             // Body
             .'        <tr><td style="padding:36px 40px 12px 40px; font-family:'.$font.'; color:#3d4c63; font-size:15px; line-height:1.6;">'
             .'          <p style="margin:0 0 8px 0; color:#16233a; font-size:16px; font-weight:600;">Halo, '.$firstName.'</p>'
-            .'          <p style="margin:0 0 20px 0;">'
+            .'          <p style="margin:0 0 24px 0;">'
             .'            Kami telah menerima permintaan verifikasi untuk pengisian <strong style="color:#16233a;">Kuesioner KPI</strong> di '.$appName.'.'
             .'            Masukkan kode di bawah ini ke dalam formulir:'
             .'          </p>'
-            // Kode OTP
-            .'          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">'
-            .'            <tr><td align="center" style="background-color:#f6ecd4; border-radius:10px; padding:20px 24px;">'
-            .'              <div style="font-family:'.$mono.'; font-size:34px; font-weight:700; letter-spacing:8px; color:#8a6a12; line-height:1;">'.$left.'&nbsp;&nbsp;'.$right.'</div>'
+            // Kode OTP — 6 kotak individual (1 digit per kotak)
+            .'          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">'
+            .'            <tr><td align="center" style="background-color:#f6ecd4; border-radius:12px; padding:24px 20px;">'
+            .'              <table role="presentation" cellpadding="0" cellspacing="0" align="center">'
+            .'                <tr>'
+            .$otpBoxes
+            .'                </tr>'
+            .'              </table>'
             .'            </td></tr>'
             .'          </table>'
             // Masa berlaku

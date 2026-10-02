@@ -6,15 +6,17 @@ namespace App\Domains\AccessControl\Middleware;
 
 use App\Domains\HumanResource\Models\Employee;
 use Closure;
+use Illuminate\Cache\CacheManager;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Menentukan "pegawai penilai" untuk rute pengisian KPI.
  *
- * Dua jalur akses (sesuai aturan: pegawai TIDAK wajib punya akun login):
- *  1. Sesi OTP kuesioner (marker session, TANPA login User). Prioritas utama.
- *  2. Akun login biasa (web guard) — untuk admin / pegawai ber-akun.
+ * Tiga jalur akses (sesuai aturan: pegawai TIDAK wajib punya akun login):
+ *  1. Sesi OTP kuesioner via marker session (prioritas utama).
+ *  2. Token verifikasi di cache (fallback jika cookie session hilang).
+ *  3. Akun login biasa (web guard) — untuk admin / pegawai ber-akun.
  *
  * Hasil ditulis ke request attribute:
  *  - kpi_employee : Employee|null  (pegawai yang sedang menilai)
@@ -30,6 +32,11 @@ final class ResolveKpiEmployee
     public const SESSION_EXPIRY = 'questionnaire.expires_at';
 
     public const SESSION_BIND = 'questionnaire.bind';
+
+    /** Prefix cache key untuk token verifikasi (fallback jika session hilang). */
+    public const CACHE_TOKEN_PREFIX = 'questionnaire.verify_token.';
+
+    public function __construct(protected CacheManager $cache) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -55,7 +62,45 @@ final class ResolveKpiEmployee
             $this->forget($request);
         }
 
-        // Jalur 2: fallback akun login biasa.
+        // Jalur 2 (FALLBACK): token verifikasi di cache.
+        // Ini menangani kasus di mana cookie session tidak sampai ke browser
+        // (misal: reverse proxy stripping Set-Cookie, CDN, atau browser yang
+        // memblokir third-party cookie). Token ini disimpan oleh
+        // QuestionnaireController saat verify() / verifyLink() sukses.
+        if (! $employee) {
+            $tokenId = $request->session()->get('questionnaire.token_id');
+
+            if ($tokenId) {
+                $tokenData = $this->cache->get(self::CACHE_TOKEN_PREFIX.$tokenId);
+
+                if (
+                    is_array($tokenData)
+                    && $tokenData['expiry'] > now()->timestamp
+                    && $tokenData['bind'] === $this->bindHash($request)
+                ) {
+                    $candidate = Employee::query()->find($tokenData['employee_id']);
+
+                    if ($candidate && $candidate->is_active) {
+                        $employee = $candidate;
+                        $viaOtp = true;
+
+                        // Sync token ke session agar request berikutnya tidak
+                        // perlu cek cache lagi (lebih cepat).
+                        $request->session()->put(self::SESSION_KEY, $candidate->id);
+                        $request->session()->put(self::SESSION_EXPIRY, $tokenData['expiry']);
+                        $request->session()->put(self::SESSION_BIND, $tokenData['bind']);
+                    }
+                } else {
+                    // Token kedaluwarsa / IP berubah → bersihkan.
+                    if ($tokenId) {
+                        $this->cache->forget(self::CACHE_TOKEN_PREFIX.$tokenId);
+                    }
+                    $request->session()->forget('questionnaire.token_id');
+                }
+            }
+        }
+
+        // Jalur 3: fallback akun login biasa.
         if (! $employee && ($user = $request->user())) {
             $employee = $user->employee;
         }

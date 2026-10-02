@@ -289,15 +289,27 @@ final class QuestionnaireController extends Controller
         // dikirim ke browser pada response berikutnya (POST verify). Namun,
         // browser belum menyimpan cookie tersebut saat GET /kuesioner/form
         // berikutnya dikirim — Laravel pun melihatnya sebagai guest.
-        // Karena rute form sudah di luar grup 'guest' (fix route sebelumnya),
-        // masalahnya justru di cookie: marker session tersimpan di id session
-        // lama (yang cookie-nya masih di browser), sementara id baru belum
-        // dikenal browser. Solusi: simpan marker di id session yang SAMA
-        // (yang cookie-nya sudah di browser), hanya regenerateToken untuk CSRF.
         $request->session()->regenerateToken();
         $request->session()->put(ResolveKpiEmployee::SESSION_KEY, $employee->id);
         $request->session()->put(ResolveKpiEmployee::SESSION_EXPIRY, now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp);
         $request->session()->put(ResolveKpiEmployee::SESSION_BIND, ResolveKpiEmployee::bindHash($request));
+
+        // Fallback: simpan token verifikasi di cache (di luar session).
+        // Ini menangani kasus di mana cookie session tidak sampai ke browser
+        // (misal: reverse proxy stripping Set-Cookie, CDN, atau browser yang
+        // memblokir third-party cookie). ResolveKpiEmployee akan cek token ini
+        // sebagai fallback jika marker session tidak ditemukan.
+        $tokenId = (string) Str::ulid();
+        $request->session()->put('questionnaire.token_id', $tokenId);
+        Cache::put(
+            ResolveKpiEmployee::CACHE_TOKEN_PREFIX.$tokenId,
+            [
+                'employee_id' => $employee->id,
+                'expiry' => now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp,
+                'bind' => ResolveKpiEmployee::bindHash($request),
+            ],
+            now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)
+        );
 
         // Log diagnostic: bantu debug jika redirect ke login masih terjadi.
         Log::info('OTP verified', [
@@ -399,6 +411,19 @@ final class QuestionnaireController extends Controller
         $request->session()->put(ResolveKpiEmployee::SESSION_KEY, $employee->id);
         $request->session()->put(ResolveKpiEmployee::SESSION_EXPIRY, now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp);
         $request->session()->put(ResolveKpiEmployee::SESSION_BIND, ResolveKpiEmployee::bindHash($request));
+
+        // Fallback: simpan token verifikasi di cache (di luar session).
+        $tokenId = (string) Str::ulid();
+        $request->session()->put('questionnaire.token_id', $tokenId);
+        Cache::put(
+            ResolveKpiEmployee::CACHE_TOKEN_PREFIX.$tokenId,
+            [
+                'employee_id' => $employee->id,
+                'expiry' => now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp,
+                'bind' => ResolveKpiEmployee::bindHash($request),
+            ],
+            now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)
+        );
 
         Log::info('OTP verified via magic link', [
             'nik' => $employee->nik,

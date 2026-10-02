@@ -133,6 +133,13 @@ final class QuestionnaireController extends Controller
         $request->session()->put('otp_challenge_id', $challengeId);
         $request->session()->forget('dev_otp');
 
+        Log::info('OTP requested', [
+            'nik' => $employee->nik,
+            'session_id' => $request->session()->getId(),
+            'challenge_id' => $challengeId,
+            'ip' => $request->ip(),
+        ]);
+
         $statusMessage = 'OTP telah dikirim ke email '.maskEmail($employee->email).'. Berlaku 10 menit.';
 
         return redirect()

@@ -41,7 +41,7 @@
                 <div>
                     <label class="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">Mailer Driver <span class="text-rose-500">*</span></label>
                     <select name="mail_mailer" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-ink focus:border-navy focus:ring-1 focus:ring-navy outline-none transition" required>
-                        @foreach(['smtp', 'log', 'sendmail', 'ses', 'mailgun'] as $driver)
+                        @foreach(['smtp', 'log', 'sendmail', 'ses', 'postmark', 'resend'] as $driver)
                             <option value="{{ $driver }}" @selected(old('mail_mailer', $settings['mail_mailer'] ?? 'smtp') === $driver)>{{ $driver }}</option>
                         @endforeach
                     </select>

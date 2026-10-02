@@ -3,6 +3,7 @@
 use App\Domains\AccessControl\Middleware\CheckPermission;
 use App\Domains\AccessControl\Middleware\CheckRole;
 use App\Domains\AccessControl\Middleware\ResolveKpiEmployee;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->use([
+            SecurityHeaders::class,
+        ]);
+
         $middleware->alias([
             'role' => CheckRole::class,
             'permission' => CheckPermission::class,

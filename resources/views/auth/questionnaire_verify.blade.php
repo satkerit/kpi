@@ -1,7 +1,6 @@
 @extends('layouts.questionnaire')
 
 @section('title', 'Verifikasi OTP — KPI 360')
-@section('period_label', 'Langkah 2 dari 2 · Masukkan Kode OTP')
 
 @section('content')
 <div class="flex justify-center">
@@ -20,19 +19,6 @@
             </div>
         @endif
 
-        @if (session('dev_otp'))
-            <div class="mb-5 p-3.5 bg-amber-50 border-2 border-amber-400 text-amber-900 rounded-xl text-sm">
-                <div class="flex items-center gap-2 mb-1">
-                    <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-                    <span class="font-bold text-amber-800 uppercase tracking-wide text-xs">Mode Development — OTP tidak dikirim via email</span>
-                </div>
-                <div class="mt-2 text-center">
-                    <span class="text-xs text-amber-700 uppercase tracking-widest block mb-1">Kode OTP Anda</span>
-                    <span class="font-mono text-3xl font-extrabold tracking-[0.5em] text-amber-900">{{ session('dev_otp') }}</span>
-                </div>
-            </div>
-        @endif
-
         @if ($errors->any())
             <div class="mb-5 p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-sm">
                 {{ $errors->first() }}
@@ -46,6 +32,7 @@
         <form method="POST" action="{{ route('questionnaire.verify') }}" class="space-y-4">
             @csrf
             <input type="hidden" name="nik" value="{{ $nik }}">
+            <input type="hidden" name="challenge_id" value="{{ $challengeId }}">
 
             <div>
                 <label for="otp" class="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-2">Kode OTP</label>

@@ -20,8 +20,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Throwable;
 
 final class QuestionnaireController extends Controller
 {
@@ -49,7 +52,8 @@ final class QuestionnaireController extends Controller
      * Keamanan:
      * - Cooldown 60 detik antar pengiriman ulang per NIK (cegah spam kirim).
      * - OTP disimpan sebagai hash bcrypt di cache — bukan plaintext.
-     * - Cache key terikat NIK + IP pengirim untuk isolasi.
+     * - Cache key terikat challenge acak + NIK + IP pengirim untuk isolasi.
+     * - OTP hanya disimpan setelah email berhasil dikirim.
      */
     public function requestOtp(Request $request): RedirectResponse
     {
@@ -59,19 +63,12 @@ final class QuestionnaireController extends Controller
 
         $employee = Employee::query()->where('nik', $validated['nik'])->first();
 
-        if (! $employee) {
-            // Pesan generik: tidak bocorkan apakah NIK ada atau tidak.
-            return back()->withErrors(['nik' => 'NIK tidak ditemukan atau email tidak terdaftar.'])->onlyInput('nik');
-        }
-
-        if (! $employee->email) {
-            return back()->withErrors(['nik' => 'NIK tidak ditemukan atau email tidak terdaftar.'])->onlyInput('nik');
-        }
+        $hasEmail = (bool) ($employee?->email);
 
         // Cooldown: cegah spam kirim ulang OTP.
         // OTP lama masih valid — arahkan langsung ke form verifikasi agar bisa digunakan.
-        $cooldownKey = 'questionnaire.otp.cooldown.'.$employee->nik;
-        if (Cache::has($cooldownKey)) {
+        $cooldownKey = 'questionnaire.otp.cooldown.'.$employee?->nik;
+        if ($hasEmail && $employee && Cache::has($cooldownKey)) {
             $ttl = (int) Cache::get($cooldownKey.'.ttl', self::RESEND_COOLDOWN);
 
             return redirect()
@@ -80,39 +77,52 @@ final class QuestionnaireController extends Controller
                 ->with('otp_nik', $employee->nik);
         }
 
+        if (! $hasEmail) {
+            // Respons generik: tidak bocorkan apakah NIK ada atau tidak.
+            return back()->withErrors(['nik' => 'NIK tidak ditemukan atau email tidak terdaftar.'])->onlyInput('nik');
+        }
+
+        $challengeId = (string) Str::ulid();
         $otp = (string) random_int(100000, 999999);
 
+        $expiresAt = now()->addMinutes(10);
+
+        try {
+            MailSettingController::applyMailConfig();
+            Mail::to($employee->email)->send(new OtpMail($otp, $employee->name));
+        } catch (Throwable $e) {
+            Log::error('Gagal mengirim OTP kuesioner', [
+                'nik' => $employee->nik,
+                'challenge_id' => $challengeId,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['nik' => 'NIK tidak ditemukan atau email tidak terdaftar.'])->onlyInput('nik');
+        }
+
         // Simpan OTP sebagai hash (bukan plaintext) — tahan terhadap cache dump/leak.
-        Cache::put("questionnaire.otp.{$employee->nik}", [
+        // Challenge ID mengikat OTP ke session peminta, mencegah OTP dicuri/replay dari session lain.
+        Cache::put("questionnaire.otp.{$employee->nik}.{$challengeId}", [
             'hash' => Hash::make($otp),
             'email' => $employee->email,
             'attempts' => 0,
-            'expires_at' => now()->addMinutes(10)->toIso8601String(),
-        ], now()->addMinutes(10));
+            'expires_at' => $expiresAt->toIso8601String(),
+        ], $expiresAt);
 
         // Set cooldown — simpan TTL sisa agar bisa ditampilkan ke user.
         Cache::put($cooldownKey, true, self::RESEND_COOLDOWN);
         Cache::put($cooldownKey.'.ttl', self::RESEND_COOLDOWN, self::RESEND_COOLDOWN);
 
-        // Di environment production: kirim OTP via email.
-        // Di development/local/testing: bypass pengiriman email, OTP hanya ditunjukkan jika config app.debug = true & APP_ENV !== production.
-        $isProduction = app()->isProduction();
+        $request->session()->regenerateToken();
+        $request->session()->put('otp_nik', $employee->nik);
+        $request->session()->put('otp_challenge_id', $challengeId);
+        $request->session()->forget('dev_otp');
 
-        if ($isProduction) {
-            MailSettingController::applyMailConfig();
-            Mail::to($employee->email)->send(new OtpMail($otp, $employee->name));
-            $statusMessage = 'OTP telah dikirim ke email '.maskEmail($employee->email).'. Berlaku 10 menit.';
-        } else {
-            if (config('app.debug')) {
-                session()->flash('dev_otp', $otp);
-            }
-            $statusMessage = '[Mode Dev] Email tidak dikirim. Silakan periksa log email atau kode OTP tertera jika mode debug aktif.';
-        }
+        $statusMessage = 'OTP telah dikirim ke email '.maskEmail($employee->email).'. Berlaku 10 menit.';
 
         return redirect()
             ->route('questionnaire.verify.form')
-            ->with('status', $statusMessage)
-            ->with('otp_nik', $employee->nik);
+            ->with('status', $statusMessage);
     }
 
     /**
@@ -120,11 +130,17 @@ final class QuestionnaireController extends Controller
      */
     public function showVerify(Request $request): View|RedirectResponse
     {
-        if (! $request->session()->has('otp_nik')) {
+        $nik = (string) $request->session()->get('otp_nik', '');
+        $challengeId = (string) $request->session()->get('otp_challenge_id', '');
+
+        if ($nik === '' || $challengeId === '') {
             return redirect()->route('questionnaire.start');
         }
 
-        return view('auth.questionnaire_verify', ['nik' => (string) $request->session()->get('otp_nik')]);
+        return view('auth.questionnaire_verify', [
+            'nik' => $nik,
+            'challengeId' => $challengeId,
+        ]);
     }
 
     /**
@@ -135,49 +151,74 @@ final class QuestionnaireController extends Controller
      *
      * Keamanan:
      * - OTP diverifikasi via Hash::check (timing-safe, lawan timing attack).
+     * - Challenge ID mengikat OTP ke session yang memintanya — cegah replay lintas session.
      * - Attempt counter: maks 5 salah → cache diinvalidasi (cegah brute force 6-digit).
-     * - OTP one-time: langsung dihapus setelah verifikasi sukses.
+     * - OTP one-time: konsumsi atomik via lock — tidak bisa dipakai paralel (race/replay).
      * - Session regenerate (cegah session fixation) sebelum menulis marker.
      */
     public function verify(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'nik' => ['required', 'string', 'max:30'],
+            'challenge_id' => ['required', 'string', 'max:64'],
             'otp' => ['required', 'digits:6'],
         ]);
 
-        $cacheKey = "questionnaire.otp.{$validated['nik']}";
-        $record = Cache::get($cacheKey);
+        $challengeId = (string) $request->session()->get('otp_challenge_id', '');
+        $sessionNik = (string) $request->session()->get('otp_nik', '');
 
-        if (! $record) {
+        // Challenge ID di form harus persis sama dengan yang ada di session peminta.
+        // Ini mencegah Burp replay: OTP yang dicuri dari satu session tidak bisa
+        // ditebus dari session lain atau dari request tanpa session yang tepat.
+        if ($challengeId === '' || $sessionNik === ''
+            || ! hash_equals($challengeId, $validated['challenge_id'])
+            || ! hash_equals($sessionNik, $validated['nik'])) {
+            $request->session()->forget(['otp_nik', 'otp_challenge_id']);
+
             return back()->withErrors(['otp' => 'OTP tidak valid atau telah kedaluwarsa.'])->onlyInput('nik');
         }
 
-        // Increment attempt sebelum verifikasi.
-        $record['attempts'] = ($record['attempts'] ?? 0) + 1;
+        $cacheKey = "questionnaire.otp.{$validated['nik']}.{$challengeId}";
 
-        // Verifikasi hash — timing-safe via Hash::check.
-        $isValid = Hash::check($validated['otp'], $record['hash']);
+        // Kunci atomik: cegah dua request paralel (race condition / Burp Intruder)
+        // mengonsumsi OTP yang sama sebelum cache dihapus.
+        $lock = Cache::lock('questionnaire.otp.lock.'.$validated['nik'].'.'.$challengeId, 10);
+        $record = null;
 
-        if (! $isValid) {
-            if ($record['attempts'] >= self::MAX_ATTEMPTS) {
-                // Invalidasi OTP setelah melebihi batas percobaan.
-                Cache::forget($cacheKey);
-
-                return back()->withErrors(['otp' => 'Terlalu banyak percobaan salah. Silakan minta OTP baru.'])->onlyInput('nik');
+        try {
+            if (! $lock->get()) {
+                return back()->withErrors(['otp' => 'OTP tidak valid atau telah kedaluwarsa.'])->onlyInput('nik');
             }
 
-            // Update attempt count di cache.
-            $remainingTtl = now()->addMinutes(10);
-            Cache::put($cacheKey, $record, $remainingTtl);
+            $record = Cache::get($cacheKey);
 
-            $sisa = self::MAX_ATTEMPTS - $record['attempts'];
+            if (! $record || ! is_array($record) || ($record['attempts'] ?? 0) >= self::MAX_ATTEMPTS) {
+                return back()->withErrors(['otp' => 'OTP tidak valid atau telah kedaluwarsa.'])->onlyInput('nik');
+            }
 
-            return back()->withErrors(['otp' => "OTP tidak valid. Sisa percobaan: {$sisa}."])->onlyInput('nik');
+            // Increment attempt sebelum verifikasi.
+            $record['attempts'] = ($record['attempts'] ?? 0) + 1;
+
+            // Verifikasi hash — timing-safe via Hash::check.
+            $isValid = Hash::check($validated['otp'], (string) ($record['hash'] ?? ''));
+
+            if (! $isValid) {
+                // Update attempt count di cache (hanya jika belum lewat batas).
+                Cache::put($cacheKey, $record, now()->addMinutes(10));
+
+                $sisa = self::MAX_ATTEMPTS - $record['attempts'];
+
+                return back()->withErrors(['otp' => "OTP tidak valid. Sisa percobaan: {$sisa}."])->onlyInput('nik');
+            }
+
+            // OTP valid — hapus segera (one-time use).
+            Cache::forget($cacheKey);
+        } finally {
+            $lock->release();
         }
 
-        // OTP valid — hapus segera (one-time use).
-        Cache::forget($cacheKey);
+        // Bersihkan challenge dari session — tidak boleh dipakai ulang.
+        $request->session()->forget(['otp_nik', 'otp_challenge_id', 'dev_otp']);
 
         $employee = Employee::query()->where('nik', $validated['nik'])->firstOrFail();
 

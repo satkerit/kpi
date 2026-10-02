@@ -10,8 +10,11 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 final class MailSettingController extends Controller
 {
@@ -30,6 +33,13 @@ final class MailSettingController extends Controller
         'mail_from_address' => ['label' => 'Alamat Pengirim',     'type' => 'email',    'placeholder' => 'noreply@gmail.com', 'is_secret' => false],
         'mail_from_name' => ['label' => 'Nama Pengirim',       'type' => 'text',     'placeholder' => 'KPI 360 System',   'is_secret' => false],
     ];
+
+    /**
+     * Mailer yang benar-benar didefinisikan di config/mail.php.
+     * Mencegah admin memilih driver yang tidak terdefinisi (mis. mailgun) yang akan
+     * membuat pengiriman OTP di production gagal.
+     */
+    private const SUPPORTED_MAILERS = ['smtp', 'log', 'sendmail', 'ses', 'postmark', 'resend'];
 
     /**
      * Halaman konfigurasi email (SMTP Gmail / mailer lain).
@@ -52,10 +62,10 @@ final class MailSettingController extends Controller
     public function save(Request $request): RedirectResponse
     {
         $rules = [
-            'mail_mailer' => ['required', 'string', 'in:smtp,log,sendmail,ses,mailgun'],
+            'mail_mailer' => ['required', 'string', Rule::in(self::SUPPORTED_MAILERS)],
             'mail_host' => ['required', 'string', 'max:255'],
             'mail_port' => ['required', 'integer', 'min:1', 'max:65535'],
-            'mail_encryption' => ['nullable', 'string', 'in:tls,ssl,'],
+            'mail_encryption' => ['nullable', 'string', 'in:tls,ssl'],
             'mail_username' => ['required', 'string', 'max:255'],
             'mail_password' => ['nullable', 'string', 'max:255'],
             'mail_from_address' => ['required', 'email', 'max:255'],
@@ -71,10 +81,16 @@ final class MailSettingController extends Controller
                 continue;
             }
 
+            // Normalisasi nilai numerik agar konsisten saat dibaca ulang.
+            $normalized = match ($key) {
+                'mail_port' => (int) $value,
+                default => (string) $value,
+            };
+
             AppSetting::query()->updateOrCreate(
                 ['key' => $key],
                 [
-                    'value' => $value,
+                    'value' => $normalized,
                     'label' => $meta['label'],
                     'group' => 'mail',
                     'is_secret' => $meta['is_secret'],
@@ -108,7 +124,12 @@ final class MailSettingController extends Controller
             });
 
             return back()->with('success', 'Email tes berhasil dikirim ke '.$validated['test_email'].'.');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
+            Log::error('Gagal kirim email tes', [
+                'test_email' => $validated['test_email'],
+                'exception' => $e->getMessage(),
+            ]);
+
             return back()->with('error', 'Gagal kirim email tes: '.$e->getMessage());
         }
     }
@@ -123,7 +144,7 @@ final class MailSettingController extends Controller
             'mail_mailer' => 'mail.default',
             'mail_host' => 'mail.mailers.smtp.host',
             'mail_port' => 'mail.mailers.smtp.port',
-            'mail_encryption' => 'mail.mailers.smtp.encryption',
+            'mail_encryption' => 'mail.mailers.smtp.scheme',
             'mail_username' => 'mail.mailers.smtp.username',
             'mail_password' => 'mail.mailers.smtp.password',
             'mail_from_address' => 'mail.from.address',
@@ -132,9 +153,17 @@ final class MailSettingController extends Controller
 
         foreach ($map as $settingKey => $configKey) {
             $value = AppSetting::get($settingKey);
-            if ($value !== null) {
-                Config::set($configKey, $value);
+            if ($value === null || $value === '') {
+                continue;
             }
+
+            // Normalisasi tipe nilai sesuai key target.
+            $normalized = match ($configKey) {
+                'mail.mailers.smtp.port' => (int) $value,
+                default => (string) $value,
+            };
+
+            Config::set($configKey, $normalized);
         }
     }
 }

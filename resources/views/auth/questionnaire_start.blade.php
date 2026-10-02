@@ -1,7 +1,6 @@
 @extends('layouts.questionnaire')
 
 @section('title', 'Pengisian Kuesioner — Masukkan NIK')
-@section('period_label', 'Langkah 1 dari 2 · Verifikasi Identitas')
 
 @section('content')
 <div class="flex justify-center">

@@ -313,46 +313,39 @@ final class QuestionnaireController extends Controller
     /**
      * Verifikasi via magic link (SUID token) dari email — one-time use.
      *
+     * DESAIN SEDERHANA: TIDAK perlu session binding.
+     * SUID token (256-bit entropy, di-hash SHA-256, consume-once) sudah
+     * cukup aman — tidak bisa ditebak, tidak bisa direplay, dan kedaluwarsa
+     * setelah 10 menit. Session binding justru menyebabkan masalah jika
+     * cookie session tidak sampai ke browser (misal: proxy, CDN, atau
+     * browser yang memblokir third-party cookie).
+     *
      * Alur:
      * 1. GET /kuesioner/verifikasi/{nik}/{suid}
-     * 2. Cari record OTP di cache (nik + challenge_id dari session)
+     * 2. Cari challenge_id dari cache (questionnaire.otp_challenge.{nik})
      * 3. Validasi SUID: hash(token dari URL) === hash di cache
      * 4. Consume SUID + OTP (hapus dari cache) — one-time
-     * 5. Buat marker session kuesioner (sama seperti verify())
+     * 5. Buat marker session kuesioner (TANPA regenerate)
      * 6. Redirect ke /kuesioner/form
-     *
-     * Keamanan:
-     * - SUID 43 char base62 (256-bit entropy) — tidak bisa ditebak.
-     * - Di-hash SHA-256 sebelum disimpan di cache — token asli tidak pernah
-     *   ada di storage, sehingga cache dump/leak tidak membocorkan token.
-     * - Bind ke challenge_id + NIK — tidak bisa direplay di session lain.
-     * - Consume-once via Cache::lock — cegah race/replay paralel.
-     * - TTL cache = masa berlaku OTP (10 menit) — link kedaluwarsa otomatis.
      */
     public function verifyLink(Request $request, string $nik, string $suid): RedirectResponse
     {
-        $sessionChallenge = (string) $request->session()->get('otp_challenge_id', '');
-        $sessionNik = (string) $request->session()->get('otp_nik', '');
+        // Ambil challenge_id terakhir untuk NIK ini dari cache.
+        $challengeId = (string) Cache::get('questionnaire.otp_challenge.'.$nik, '');
 
-        // NIK di URL harus cocok dengan session peminta (mencegah cross-NIK replay).
-        if ($sessionChallenge === '' || $sessionNik === ''
-            || ! hash_equals($sessionNik, $nik)
-            || $sessionChallenge === '') {
-            // Log untuk diagnostik, tapi jangan bocorkan detail.
-            Log::warning('verifyLink: challenge mismatch', [
-                'url_nik' => $nik,
-                'session_nik' => $sessionNik,
-                'session_challenge' => $sessionChallenge !== '' ? substr($sessionChallenge, 0, 8).'...' : '(empty)',
+        if ($challengeId === '') {
+            Log::warning('verifyLink: no challenge in cache', [
+                'nik' => $nik,
                 'ip' => $request->ip(),
             ]);
 
             return redirect()->route('questionnaire.start')
-                ->with('error', 'Tautan verifikasi tidak valid atau telah kedaluwarsa. Silakan minta OTP baru.');
+                ->with('error', 'Tautan verifikasi telah kedaluwarsa. Silakan minta OTP baru.');
         }
 
-        $otpCacheKey = "questionnaire.otp.{$nik}.{$sessionChallenge}";
-        $suidCacheKey = "questionnaire.suid.{$nik}.{$sessionChallenge}";
-        $lockKey = 'questionnaire.suid.lock.'.$nik.'.'.$sessionChallenge;
+        $otpCacheKey = "questionnaire.otp.{$nik}.{$challengeId}";
+        $suidCacheKey = "questionnaire.suid.{$nik}.{$challengeId}";
+        $lockKey = 'questionnaire.suid.lock.'.$nik.'.'.$challengeId;
 
         $lock = Cache::lock($lockKey, 10);
 
@@ -376,7 +369,7 @@ final class QuestionnaireController extends Controller
             if ($storedSuidHash === '' || ! hash_equals($storedSuidHash, $suidHashFromUrl)) {
                 Log::warning('verifyLink: SUID mismatch', [
                     'nik' => $nik,
-                    'challenge' => substr($sessionChallenge, 0, 8).'...',
+                    'challenge' => substr($challengeId, 0, 8).'...',
                     'ip' => $request->ip(),
                 ]);
 
@@ -387,12 +380,10 @@ final class QuestionnaireController extends Controller
             // Consume SUID + OTP — one-time use.
             Cache::forget($suidCacheKey);
             Cache::forget($otpCacheKey);
+            Cache::forget('questionnaire.otp_challenge.'.$nik);
         } finally {
             $lock->release();
         }
-
-        // Bersihkan challenge dari session.
-        $request->session()->forget(['otp_nik', 'otp_challenge_id']);
 
         $employee = Employee::query()->where('nik', $nik)->firstOrFail();
 
@@ -401,7 +392,9 @@ final class QuestionnaireController extends Controller
                 ->withErrors(['nik' => 'Pegawai tidak aktif. Hubungi administrator.']);
         }
 
-        // Buat marker session kuesioner (sama seperti verify()).
+        // Buat marker session kuesioner.
+        // PENTING: TIDAK regenerate session id — biarkan id session yang sama
+        // agar cookie session yang sudah ada di browser tetap valid.
         $request->session()->regenerateToken();
         $request->session()->put(ResolveKpiEmployee::SESSION_KEY, $employee->id);
         $request->session()->put(ResolveKpiEmployee::SESSION_EXPIRY, now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp);

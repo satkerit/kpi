@@ -51,6 +51,29 @@ Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
 /*
 |---------------------------------------------------------------------------
+| Magic Link OTP (SUID token dari email) — one-time use
+|---------------------------------------------------------------------------
+|
+| Route GET /kuesioner/verifikasi/{nik}/{suid}
+| TIDAK masuk grup 'guest' karena:
+|  - Link magic bersifat one-time (token di-consume saat dipakai).
+|  - Setelah berhasil, user di-redirect ke /kuesioner/form yang
+|    membutuhkan marker session (bukan auth guard).
+|  - Jika masuk grup 'guest', maka setelah marker session dibuat,
+|    request berikutnya akan di-redirect ke login (bug yang sudah
+|    terjadi sebelumnya).
+|
+| Keamanan: SUID 256-bit entropy, di-hash SHA-256, bound ke session
+| challenge, consume-once via Cache::lock.
+*/
+
+Route::get('/kuesioner/verifikasi/{nik}/{suid}', [QuestionnaireController::class, 'verifyLink'])
+    ->middleware('throttle:10,1')
+    ->whereNumber('nik')
+    ->name('questionnaire.verify.link');
+
+/*
+|---------------------------------------------------------------------------
 | Root Redirection
 |---------------------------------------------------------------------------
 |

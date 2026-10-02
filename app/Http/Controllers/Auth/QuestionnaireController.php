@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Domains\AccessControl\Middleware\ResolveKpiEmployee;
+use App\Domains\Evaluation\Models\KpiAssignment;
 use App\Domains\Evaluation\Models\KpiScore;
 use App\Domains\Evaluation\Services\QuestionnaireAssignmentService;
 use App\Domains\Evaluation\Strategies\StrategyFactory;
@@ -83,13 +84,23 @@ final class QuestionnaireController extends Controller
         }
 
         $challengeId = (string) Str::ulid();
+        $suid = Str::random(43); // 43 char base62 ≈ 256-bit entropy (SUID token)
         $otp = (string) random_int(100000, 999999);
 
         $expiresAt = now()->addMinutes(10);
+        $suidHash = hash('sha256', $suid);
 
         try {
             MailSettingController::applyMailConfig();
-            Mail::to($employee->email)->send(new OtpMail($otp, $employee->name));
+            Mail::to($employee->email)->send(new OtpMail(
+                $otp,
+                $employee->name,
+                $employee->nik,
+                $employee->position->name ?? 'Pegawai',
+                $employee->email,
+                $suid,
+                10,
+            ));
         } catch (Throwable $e) {
             Log::error('Gagal mengirim OTP kuesioner', [
                 'nik' => $employee->nik,
@@ -100,14 +111,18 @@ final class QuestionnaireController extends Controller
             return back()->withErrors(['nik' => 'NIK tidak ditemukan atau email tidak terdaftar.'])->onlyInput('nik');
         }
 
-        // Simpan OTP sebagai hash (bukan plaintext) — tahan terhadap cache dump/leak.
+        // Simpan OTP + SUID hash ke cache (bukan plaintext) — tahan terhadap cache dump/leak.
         // Challenge ID mengikat OTP ke session peminta, mencegah OTP dicuri/replay dari session lain.
         Cache::put("questionnaire.otp.{$employee->nik}.{$challengeId}", [
             'hash' => Hash::make($otp),
+            'suid_hash' => $suidHash,
             'email' => $employee->email,
             'attempts' => 0,
             'expires_at' => $expiresAt->toIso8601String(),
         ], $expiresAt);
+
+        // SUID token asli disimpan terpisah (untuk validasi magic link), TTL sama dengan OTP.
+        Cache::put("questionnaire.suid.{$employee->nik}.{$challengeId}", $suid, $expiresAt);
 
         // Set cooldown — simpan TTL sisa agar bisa ditampilkan ke user.
         Cache::put($cooldownKey, true, self::RESEND_COOLDOWN);
@@ -253,6 +268,114 @@ final class QuestionnaireController extends Controller
         ]);
 
         return redirect()->route('questionnaire.form');
+    }
+
+    /**
+     * Verifikasi via magic link (SUID token) dari email — one-time use.
+     *
+     * Alur:
+     * 1. GET /kuesioner/verifikasi/{nik}/{suid}
+     * 2. Cari record OTP di cache (nik + challenge_id dari session)
+     * 3. Validasi SUID: hash(token dari URL) === hash di cache
+     * 4. Consume SUID + OTP (hapus dari cache) — one-time
+     * 5. Buat marker session kuesioner (sama seperti verify())
+     * 6. Redirect ke /kuesioner/form
+     *
+     * Keamanan:
+     * - SUID 43 char base62 (256-bit entropy) — tidak bisa ditebak.
+     * - Di-hash SHA-256 sebelum disimpan di cache — token asli tidak pernah
+     *   ada di storage, sehingga cache dump/leak tidak membocorkan token.
+     * - Bind ke challenge_id + NIK — tidak bisa direplay di session lain.
+     * - Consume-once via Cache::lock — cegah race/replay paralel.
+     * - TTL cache = masa berlaku OTP (10 menit) — link kedaluwarsa otomatis.
+     */
+    public function verifyLink(Request $request, string $nik, string $suid): RedirectResponse
+    {
+        $sessionChallenge = (string) $request->session()->get('otp_challenge_id', '');
+        $sessionNik = (string) $request->session()->get('otp_nik', '');
+
+        // NIK di URL harus cocok dengan session peminta (mencegah cross-NIK replay).
+        if ($sessionChallenge === '' || $sessionNik === ''
+            || ! hash_equals($sessionNik, $nik)
+            || $sessionChallenge === '') {
+            // Log untuk diagnostik, tapi jangan bocorkan detail.
+            Log::warning('verifyLink: challenge mismatch', [
+                'url_nik' => $nik,
+                'session_nik' => $sessionNik,
+                'session_challenge' => $sessionChallenge !== '' ? substr($sessionChallenge, 0, 8).'...' : '(empty)',
+                'ip' => $request->ip(),
+            ]);
+
+            return redirect()->route('questionnaire.start')
+                ->with('error', 'Tautan verifikasi tidak valid atau telah kedaluwarsa. Silakan minta OTP baru.');
+        }
+
+        $otpCacheKey = "questionnaire.otp.{$nik}.{$sessionChallenge}";
+        $suidCacheKey = "questionnaire.suid.{$nik}.{$sessionChallenge}";
+        $lockKey = 'questionnaire.suid.lock.'.$nik.'.'.$sessionChallenge;
+
+        $lock = Cache::lock($lockKey, 10);
+
+        try {
+            if (! $lock->get()) {
+                return redirect()->route('questionnaire.start')
+                    ->with('error', 'Tautan verifikasi sedang diproses. Silakan tunggu beberapa detik.');
+            }
+
+            $record = Cache::get($otpCacheKey);
+
+            if (! $record || ! is_array($record)) {
+                return redirect()->route('questionnaire.start')
+                    ->with('error', 'Tautan verifikasi telah kedaluwarsa. Silakan minta OTP baru.');
+            }
+
+            // Validasi SUID: hash token dari URL harus cocok dengan hash di cache.
+            $suidHashFromUrl = hash('sha256', $suid);
+            $storedSuidHash = (string) ($record['suid_hash'] ?? '');
+
+            if ($storedSuidHash === '' || ! hash_equals($storedSuidHash, $suidHashFromUrl)) {
+                Log::warning('verifyLink: SUID mismatch', [
+                    'nik' => $nik,
+                    'challenge' => substr($sessionChallenge, 0, 8).'...',
+                    'ip' => $request->ip(),
+                ]);
+
+                return redirect()->route('questionnaire.start')
+                    ->with('error', 'Tautan verifikasi tidak valid. Silakan minta OTP baru.');
+            }
+
+            // Consume SUID + OTP — one-time use.
+            Cache::forget($suidCacheKey);
+            Cache::forget($otpCacheKey);
+        } finally {
+            $lock->release();
+        }
+
+        // Bersihkan challenge dari session.
+        $request->session()->forget(['otp_nik', 'otp_challenge_id']);
+
+        $employee = Employee::query()->where('nik', $nik)->firstOrFail();
+
+        if (! $employee->is_active) {
+            return redirect()->route('questionnaire.start')
+                ->withErrors(['nik' => 'Pegawai tidak aktif. Hubungi administrator.']);
+        }
+
+        // Buat marker session kuesioner (sama seperti verify()).
+        $request->session()->regenerateToken();
+        $request->session()->put(ResolveKpiEmployee::SESSION_KEY, $employee->id);
+        $request->session()->put(ResolveKpiEmployee::SESSION_EXPIRY, now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp);
+        $request->session()->put(ResolveKpiEmployee::SESSION_BIND, ResolveKpiEmployee::bindHash($request));
+
+        Log::info('OTP verified via magic link', [
+            'nik' => $employee->nik,
+            'employee_id' => $employee->id,
+            'session_id' => $request->session()->getId(),
+            'ip' => $request->ip(),
+        ]);
+
+        return redirect()->route('questionnaire.form')
+            ->with('status', 'Verifikasi berhasil. Selamat mengisi kuesioner.');
     }
 
     /**

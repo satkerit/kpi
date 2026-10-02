@@ -26,11 +26,19 @@ final class OtpMail extends Mailable
     /**
      * @param  string  $code  Kode OTP 6 digit.
      * @param  string  $recipientName  Nama penerima (sapaan personal).
+     * @param  string  $nik  NIK pegawai (ditampilkan di email).
+     * @param  string  $position  Jabatan pegawai (ditampilkan di email).
+     * @param  string  $email  Email pegawai (ditampilkan di email).
+     * @param  string  $suid  SUID token untuk magic link.
      * @param  int  $minutes  Masa berlaku OTP dalam menit.
      */
     public function __construct(
         public string $code,
         public string $recipientName,
+        public string $nik = '',
+        public string $position = '',
+        public string $email = '',
+        public string $suid = '',
         public int $minutes = 10,
     ) {}
 
@@ -77,6 +85,19 @@ final class OtpMail extends Mailable
 
         $font = "'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
 
+        // Info employee (NIK, nama, jabatan, email).
+        $nik = e($this->nik);
+        $fullName = e($this->recipientName);
+        $position = e($this->position);
+        $email = e($this->email);
+
+        // Magic link: SUID token embedded di URL.
+        // Link ini one-time use — setelah dipakai, token di-consume dari cache.
+        $magicLink = e(route('questionnaire.verify.link', [
+            'nik' => $this->nik,
+            'suid' => $this->suid,
+        ]));
+
         return '<!DOCTYPE html>'
             .'<html lang="id">'
             .'<head>'
@@ -96,9 +117,51 @@ final class OtpMail extends Mailable
             // Body
             .'        <tr><td style="padding:36px 40px 12px 40px; font-family:'.$font.'; color:#3d4c63; font-size:15px; line-height:1.6;">'
             .'          <p style="margin:0 0 8px 0; color:#16233a; font-size:16px; font-weight:600;">Halo, '.$firstName.'</p>'
-            .'          <p style="margin:0 0 24px 0;">'
+            .'          <p style="margin:0 0 20px 0;">'
             .'            Kami telah menerima permintaan verifikasi untuk pengisian <strong style="color:#16233a;">Kuesioner KPI</strong> di '.$appName.'.'
-            .'            Masukkan kode di bawah ini ke dalam formulir:'
+            .'          </p>'
+            // Info Employee
+            .'          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f9fb; border-radius:8px; border:1px solid #e5e9f0; margin:0 0 24px 0;">'
+            .'            <tr><td style="padding:16px 20px; font-family:'.$font.'; font-size:13px; color:#3d4c63;">'
+            .'              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">'
+            .'                <tr>'
+            .'                  <td style="padding:4px 0; color:#7c8aa0; width:100px;">NIK</td>'
+            .'                  <td style="padding:4px 0; color:#16233a; font-weight:600;">'.$nik.'</td>'
+            .'                </tr>'
+            .'                <tr>'
+            .'                  <td style="padding:4px 0; color:#7c8aa0;">Nama</td>'
+            .'                  <td style="padding:4px 0; color:#16233a; font-weight:600;">'.$fullName.'</td>'
+            .'                </tr>'
+            .'                <tr>'
+            .'                  <td style="padding:4px 0; color:#7c8aa0;">Jabatan</td>'
+            .'                  <td style="padding:4px 0; color:#16233a; font-weight:600;">'.$position.'</td>'
+            .'                </tr>'
+            .'                <tr>'
+            .'                  <td style="padding:4px 0; color:#7c8aa0;">Email</td>'
+            .'                  <td style="padding:4px 0; color:#16233a; font-weight:600;">'.$email.'</td>'
+            .'                </tr>'
+            .'              </table>'
+            .'            </td></tr>'
+            .'          </table>'
+            // Magic Link (primary CTA)
+            .'          <p style="margin:0 0 16px 0;">'
+            .'            <strong style="color:#16233a;">Cara tercepat:</strong> klik tombol di bawah untuk langsung masuk ke formulir kuesioner — tanpa perlu memasukkan kode.'
+            .'          </p>'
+            .'          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">'
+            .'            <tr><td align="center">'
+            .'              <a href="'.$magicLink.'" style="display:inline-block; background:linear-gradient(135deg, #0f2438 0%, #16324f 100%); color:#ffffff; font-family:'.$font.'; font-size:15px; font-weight:700; padding:14px 32px; border-radius:8px; text-decoration:none; letter-spacing:0.3px;">'
+            .'                &#10148; &nbsp;Verifikasi &amp; Buka Formulir KPI'
+            .'              </a>'
+            .'            </td></tr>'
+            .'          </table>'
+            .'          <p style="margin:0 0 24px 0; font-size:12px; color:#7c8aa0; text-align:center;">'
+            .'            Jika tombol di atas tidak berfungsi, salin tautan berikut ke browser:'
+            .'          </p>'
+            .'          <p style="margin:0 0 24px 0; font-size:11px; color:#7c8aa0; word-break:break-all; font-family:\'JetBrains Mono\', \'Courier New\', monospace;">'.$magicLink.'</p>'
+            // Alternatif: input manual
+            .'          <div style="border-top:1px solid #e5e9f0; margin:0 0 20px 0;"></div>'
+            .'          <p style="margin:0 0 16px 0;">'
+            .'            <strong style="color:#16233a;">Atau masukkan kode manual:</strong>'
             .'          </p>'
             // Kode OTP — 6 kotak individual (1 digit per kotak)
             .'          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">'
@@ -112,7 +175,7 @@ final class OtpMail extends Mailable
             .'          </table>'
             // Masa berlaku
             .'          <p style="margin:0 0 24px 0; font-size:13px; color:#7c8aa0; text-align:center;">'
-            .'            Kode ini berlaku hingga <strong style="color:#3d4c63;">'.$expires.'</strong>.'
+            .'            Kode dan tautan ini berlaku hingga <strong style="color:#3d4c63;">'.$expires.'</strong>.'
             .'          </p>'
             // Pemisah
             .'          <div style="border-top:1px solid #e5e9f0; margin:0 0 20px 0;"></div>'
@@ -121,8 +184,8 @@ final class OtpMail extends Mailable
             .'            &#9888;&#65039; Jika Anda tidak meminta kode ini, abaikan email &#8212; tidak ada tindakan yang perlu dilakukan.'
             .'          </p>'
             .'          <p style="margin:0; font-size:13px; color:#7c8aa0;">'
-            .'            Demi keamanan, jangan bagikan kode ini kepada siapa pun, termasuk tim IT atau atasan.'
-            .'            Tim '.$appName.' tidak akan pernah meminta kode ini.'
+            .'            Demi keamanan, jangan bagikan kode atau tautan ini kepada siapa pun, termasuk tim IT atau atasan.'
+            .'            Tim '.$appName.' tidak akan pernah meminta kode atau tautan verifikasi ini.'
             .'          </p>'
             .'        </td></tr>'
             // Footer

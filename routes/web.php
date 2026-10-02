@@ -70,6 +70,10 @@ Route::get('/', function () {
 |
 | Middleware `kpi.employee` meresolusi pegawai penilai dari sesi OTP
 | (atau fallback akun login). Tanpa identitas valid → dialihkan ke /kuesioner.
+|
+| PENTING: Rute di bawah TIDAK boleh masuk grup `middleware('guest')`.
+| Middleware `guest` akan redirect semua user yang sudah terautentikasi
+| (termasuk sesi OTP yang baru saja diverifikasi) ke halaman login.
 */
 
 Route::middleware('kpi.employee')->group(function () {

@@ -4,33 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ \App\Models\AppSetting::get('app_name', config('app.name', 'KPI 360')) }} — {{ \App\Models\AppSetting::get('app_slogan', 'Penilaian Kinerja 360°') }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @vite('resources/css/app.css')
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'sans-serif'],
-                        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
-                    },
-                    colors: {
-                        ink: { DEFAULT: '#1e293b', soft: '#475569', muted: '#94a3b8' },
-                        navy: { DEFAULT: '#1e3a8a', deep: '#0f172a', tint: '#f1f5f9' },
-                        gold: { DEFAULT: '#d97706', soft: '#fef3c7', deep: '#92400e' },
-                        paper: '#f8fafc',
-                    },
-                    boxShadow: {
-                        card: '0 1px 2px rgba(22,35,58,.06), 0 4px 16px rgba(22,35,58,.06)',
-                        btn: '0 1px 2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.12)',
-                        'btn-hover': '0 4px 12px -2px rgba(15, 23, 42, 0.18)',
-                    },
-                },
-            },
-        };
-    </script>
     <style>
+        /* Palet khusus dashboard admin (menimpa token default di app.css). */
+        :root {
+            --color-ink: #1e293b;
+            --color-ink-soft: #475569;
+            --color-ink-muted: #94a3b8;
+            --color-navy: #1e3a8a;
+            --color-navy-deep: #0f172a;
+            --color-navy-tint: #f1f5f9;
+            --color-gold: #d97706;
+            --color-gold-soft: #fef3c7;
+            --color-gold-deep: #92400e;
+            --color-paper: #f8fafc;
+        }
+
         [x-cloak] { display: none; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-thumb { background: #c9d2de; border-radius: 4px; }
@@ -179,7 +170,7 @@
     <div class="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-3 bg-navy-deep text-white px-4 py-3">
         <div class="flex items-center gap-2 min-w-0">
             @if($appLogo = \App\Models\AppSetting::get('app_logo'))
-                <img src="{{ Storage::url($appLogo) }}" alt="Logo" class="w-9 h-9 rounded-xl object-contain bg-white/10 p-1 shrink-0">
+                <img src="{{ asset($appLogo) }}" alt="Logo" class="w-9 h-9 rounded-xl object-contain bg-white/10 p-1 shrink-0">
             @else
                 <div class="w-9 h-9 rounded-xl bg-gold text-navy-deep font-extrabold grid place-items-center shrink-0">
                     {{ strtoupper(mb_substr(\App\Models\AppSetting::get('app_name', 'KPI 360'), 0, 3)) }}
@@ -195,7 +186,7 @@
     <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 hidden w-64 shrink-0 bg-navy-deep text-white/90 flex-col lg:static lg:flex">
         <div class="flex items-center gap-3 px-6 h-16 border-b border-white/10">
             @if($appLogo = \App\Models\AppSetting::get('app_logo'))
-                <img src="{{ Storage::url($appLogo) }}" alt="Logo" class="w-9 h-9 rounded-lg object-contain bg-white/10 p-1 shrink-0">
+                <img src="{{ asset($appLogo) }}" alt="Logo" class="w-9 h-9 rounded-lg object-contain bg-white/10 p-1 shrink-0">
             @else
                 <div class="w-9 h-9 rounded-lg bg-gold/90 flex items-center justify-center font-extrabold text-navy-deep text-sm tracking-tight shrink-0">
                     {{ strtoupper(mb_substr(\App\Models\AppSetting::get('app_name', 'KPI 360'), 0, 3)) }}

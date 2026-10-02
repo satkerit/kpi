@@ -283,16 +283,13 @@ final class QuestionnaireController extends Controller
         }
 
         // Sesi kuesioner: marker session terikat IP + user-agent, TANPA login web guard.
-        //
-        // PENTING: HAPUS `session()->regenerate()` di sini.
-        // Alasannya: regenerate() membuat id session BARU, dan cookie session baru
-        // dikirim ke browser pada response berikutnya (POST verify). Namun,
-        // browser belum menyimpan cookie tersebut saat GET /kuesioner/form
-        // berikutnya dikirim — Laravel pun melihatnya sebagai guest.
         $request->session()->regenerateToken();
+        $sessionExpiry = now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp;
+        $bindHash = ResolveKpiEmployee::bindHash($request);
+
         $request->session()->put(ResolveKpiEmployee::SESSION_KEY, $employee->id);
-        $request->session()->put(ResolveKpiEmployee::SESSION_EXPIRY, now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp);
-        $request->session()->put(ResolveKpiEmployee::SESSION_BIND, ResolveKpiEmployee::bindHash($request));
+        $request->session()->put(ResolveKpiEmployee::SESSION_EXPIRY, $sessionExpiry);
+        $request->session()->put(ResolveKpiEmployee::SESSION_BIND, $bindHash);
 
         // Fallback: simpan token verifikasi di cache (di luar session).
         // Ini menangani kasus di mana cookie session tidak sampai ke browser
@@ -305,8 +302,8 @@ final class QuestionnaireController extends Controller
             ResolveKpiEmployee::CACHE_TOKEN_PREFIX.$tokenId,
             [
                 'employee_id' => $employee->id,
-                'expiry' => now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp,
-                'bind' => ResolveKpiEmployee::bindHash($request),
+                'expiry' => $sessionExpiry,
+                'bind' => $bindHash,
             ],
             now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)
         );
@@ -405,22 +402,24 @@ final class QuestionnaireController extends Controller
         }
 
         // Buat marker session kuesioner.
-        // PENTING: TIDAK regenerate session id — biarkan id session yang sama
-        // agar cookie session yang sudah ada di browser tetap valid.
         $request->session()->regenerateToken();
+        $sessionExpiry = now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp;
+        $bindHash = ResolveKpiEmployee::bindHash($request);
+
         $request->session()->put(ResolveKpiEmployee::SESSION_KEY, $employee->id);
-        $request->session()->put(ResolveKpiEmployee::SESSION_EXPIRY, now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp);
-        $request->session()->put(ResolveKpiEmployee::SESSION_BIND, ResolveKpiEmployee::bindHash($request));
+        $request->session()->put(ResolveKpiEmployee::SESSION_EXPIRY, $sessionExpiry);
+        $request->session()->put(ResolveKpiEmployee::SESSION_BIND, $bindHash);
 
         // Fallback: simpan token verifikasi di cache (di luar session).
+        // PENTING: ini akan digunakan jika cookie session hilang atau tidak sampai.
         $tokenId = (string) Str::ulid();
         $request->session()->put('questionnaire.token_id', $tokenId);
         Cache::put(
             ResolveKpiEmployee::CACHE_TOKEN_PREFIX.$tokenId,
             [
                 'employee_id' => $employee->id,
-                'expiry' => now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)->timestamp,
-                'bind' => ResolveKpiEmployee::bindHash($request),
+                'expiry' => $sessionExpiry,
+                'bind' => $bindHash,
             ],
             now()->addSeconds(ResolveKpiEmployee::SESSION_TTL)
         );
@@ -483,7 +482,11 @@ final class QuestionnaireController extends Controller
             ?? KpiPeriod::query()->latest('id')->first();
 
         if (! $period) {
-            return redirect()->route('kpi.index')->with('error', 'Belum ada periode KPI yang dibuka.');
+            // PENTING: jangan arahkan ke route kpi.* — route tersebut berada di
+            // balik middleware 'auth' + 'permission:kpi.view', sehingga pegawai
+            // yang hanya punya sesi OTP akan dilempar ke halaman login.
+            return redirect()->route('questionnaire.start')
+                ->withErrors(['nik' => 'Belum ada periode KPI yang dibuka. Silakan hubungi administrator.']);
         }
 
         $assignments = $service->getAssignmentsFor($me, $period->id);
@@ -536,7 +539,8 @@ final class QuestionnaireController extends Controller
             ?? KpiPeriod::query()->latest('id')->first();
 
         if (! $period) {
-            return back()->with('error', 'Belum ada periode KPI yang dibuka.');
+            return redirect()->route('questionnaire.start')
+                ->withErrors(['nik' => 'Belum ada periode KPI yang dibuka. Silakan hubungi administrator.']);
         }
 
         $maxScore = (float) (RatingScale::query()->where('period_id', $period->id)->max('max_value') ?: 10);

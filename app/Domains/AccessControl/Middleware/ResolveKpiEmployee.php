@@ -68,33 +68,31 @@ final class ResolveKpiEmployee
         // memblokir third-party cookie). Token ini disimpan oleh
         // QuestionnaireController saat verify() / verifyLink() sukses.
         if (! $employee) {
-            $tokenId = $request->session()->get('questionnaire.token_id');
+            $tokenId = (string) $request->session()->get('questionnaire.token_id', '');
 
-            if ($tokenId) {
+            if ($tokenId !== '') {
                 $tokenData = $this->cache->get(self::CACHE_TOKEN_PREFIX.$tokenId);
 
                 if (
                     is_array($tokenData)
-                    && $tokenData['expiry'] > now()->timestamp
-                    && $tokenData['bind'] === $this->bindHash($request)
+                    && ($tokenData['expiry'] ?? 0) > now()->timestamp
+                    && ($tokenData['bind'] ?? '') === $this->bindHash($request)
                 ) {
-                    $candidate = Employee::query()->find($tokenData['employee_id']);
+                    $candidate = Employee::query()->find($tokenData['employee_id'] ?? null);
 
                     if ($candidate && $candidate->is_active) {
                         $employee = $candidate;
                         $viaOtp = true;
 
-                        // Sync token ke session agar request berikutnya tidak
-                        // perlu cek cache lagi (lebih cepat).
+                        // Sync token ke session marker agar request berikutnya
+                        // tidak perlu cek cache lagi (lebih cepat).
                         $request->session()->put(self::SESSION_KEY, $candidate->id);
                         $request->session()->put(self::SESSION_EXPIRY, $tokenData['expiry']);
                         $request->session()->put(self::SESSION_BIND, $tokenData['bind']);
                     }
                 } else {
                     // Token kedaluwarsa / IP berubah → bersihkan.
-                    if ($tokenId) {
-                        $this->cache->forget(self::CACHE_TOKEN_PREFIX.$tokenId);
-                    }
+                    $this->cache->forget(self::CACHE_TOKEN_PREFIX.$tokenId);
                     $request->session()->forget('questionnaire.token_id');
                 }
             }

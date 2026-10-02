@@ -3,7 +3,39 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/* -------------------------------------------------------------------------
+ | Design tokens
+ | -------------------------------------------------------------------------
+ | Sebelumnya token ini didefinisikan inline lewat konfigurasi Play CDN
+ | (script CDN + `tailwind.config`).
+ | Sekarang dikompilasi oleh Vite/Tailwind v4 lewat `@theme` agar tidak
+ | lagi bergantung pada CDN di production.
+ |
+ | Palet default di sini adalah palet halaman kuesioner/OTP. Layout admin
+ | (`layouts/app.blade.php`) menimpa variabel warna di :root dengan palet
+ | admin-nya sendiri sehingga tampilan dashboard tidak berubah.
+ ------------------------------------------------------------------------- */
+
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --color-ink: #16233a;
+    --color-ink-soft: #3d4c63;
+    --color-ink-muted: #7c8aa0;
+
+    --color-navy: #16324f;
+    --color-navy-deep: #0f2438;
+    --color-navy-tint: #eef3f8;
+
+    --color-gold: #b98e1f;
+    --color-gold-soft: #f6ecd4;
+    --color-gold-deep: #8a6a12;
+
+    --color-paper: #f6f7f9;
+
+    --shadow-card: 0 1px 2px rgba(22, 35, 58, 0.06), 0 4px 16px rgba(22, 35, 58, 0.06);
+    --shadow-btn: 0 1px 2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.12);
+    --shadow-btn-hover: 0 4px 12px -2px rgba(15, 23, 42, 0.18);
 }

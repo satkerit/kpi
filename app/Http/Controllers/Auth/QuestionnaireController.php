@@ -453,11 +453,25 @@ final class QuestionnaireController extends Controller
             'employee_nik' => $me?->nik,
             'session_id' => $request->session()->getId(),
             'session_has_marker' => (bool) $request->session()->get(ResolveKpiEmployee::SESSION_KEY),
+            'session_token_id' => $request->session()->get('questionnaire.token_id') ? 'yes' : 'no',
             'auth_check' => auth()->check(),
+            'http_referrer' => $request->headers->get('referer', '(none)'),
+            'user_agent' => substr($request->userAgent() ?? '', 0, 80),
             'ip' => $request->ip(),
         ]);
 
         if (! $me) {
+            // DEBUG: jika employee null, log lebih detail untuk trace masalah.
+            Log::warning('Questionnaire form: no employee resolved', [
+                'session_id' => $request->session()->getId(),
+                'session_marker' => $request->session()->get(ResolveKpiEmployee::SESSION_KEY),
+                'session_token_id' => $request->session()->get('questionnaire.token_id'),
+                'session_expiry' => $request->session()->get(ResolveKpiEmployee::SESSION_EXPIRY),
+                'session_bind' => substr((string) $request->session()->get(ResolveKpiEmployee::SESSION_BIND), 0, 16),
+                'request_bind' => substr(ResolveKpiEmployee::bindHash($request), 0, 16),
+                'ip' => $request->ip(),
+            ]);
+
             return redirect()->route('questionnaire.start')
                 ->with('error', 'Sesi kuesioner tidak valid atau telah berakhir. Silakan masukkan NIK kembali.');
         }
